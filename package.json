@@ -11,14 +11,20 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.sayHello"
+        "onCommand:extension.deleteLine",
+        "onCommand:extension.yank"
     ],
     "main": "./out/extension",
     "contributes": {
         "commands": [{
-            "command": "extension.sayHello",
-            "title": "Hello World"
-        }]
+            "command": "extension.deleteLine",
+            "title": "Delete Line"
+        },
+        {
+            "command": "extension.yank",
+            "title": "Yank"
+        }
+    ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
