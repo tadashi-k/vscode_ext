@@ -3,7 +3,8 @@
 import * as vscode from 'vscode';
 
 export function activateEditorExt(context: vscode.ExtensionContext) {
-	var yankLine: string;
+	var yankString: string;
+	var yankLine: number = -1;
 
 	function deleteLine() {
 		let editor = vscode.window.activeTextEditor;
@@ -17,8 +18,13 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		let range = new vscode.Range(linePos, linePos.translate(1));
 
 		let line = editor.document.getText(range);
-		console.log(line);
-		yankLine = line;
+
+		if (linePos.line === yankLine) {
+			yankString += line;
+		} else {
+			yankString = line;
+		}
+		yankLine = linePos.line;
 
 		editor.edit((edit: vscode.TextEditorEdit) => {
 			console.log('edit');
@@ -38,7 +44,7 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		let linePos = document.lineAt(selection.active).range.start;
 
 		editor.edit((edit: vscode.TextEditorEdit) => {
-			edit.insert(linePos, yankLine);
+			edit.insert(linePos, yankString);
 		});
 	}
 
