@@ -11,14 +11,17 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.deleteLine",
-        "onCommand:extension.yank"
+        "*"
     ],
     "main": "./out/extension",
     "contributes": {
         "commands": [{
             "command": "extension.deleteLine",
-            "title": "Delete Line"
+            "title": "Delete line"
+        },
+        {
+            "command": "extension.deleteEndOfLine",
+            "title": "Delete end of line"
         },
         {
             "command": "extension.yank",
