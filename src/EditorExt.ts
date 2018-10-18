@@ -27,7 +27,6 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		yankLine = linePos.line;
 
 		editor.edit((edit: vscode.TextEditorEdit) => {
-			console.log('edit');
 			edit.delete(range);
 		});
 	}
