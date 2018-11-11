@@ -1,6 +1,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import { copy } from 'copy-paste';
 
 export function activateEditorExt(context: vscode.ExtensionContext) {
 	var yankString: string;
@@ -74,6 +75,21 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		});
 	}
 
+	function copyAndUnselect() {
+		let editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			return;
+		}
+		let selection = editor.selection;
+		let document = editor.document;
+		let str = document.getText(selection);
+		console.log(str);
+
+		copy(str);
+		let pos = editor.selection.active;
+		editor.selection = new vscode.Selection(pos, pos);
+	}
+
 	function registerCommand(context: vscode.ExtensionContext, name: string, callback: () => void) {
 		let disposable = vscode.commands.registerCommand('extension.' + name, callback);
 		context.subscriptions.push(disposable);
@@ -82,4 +98,5 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 	registerCommand(context, 'deleteLine', deleteLine);
 	registerCommand(context, 'deleteEndOfLine', deleteEndOfLine);
 	registerCommand(context, 'yank', yank);
+	registerCommand(context, 'copyAndUnselect', copyAndUnselect);
 }

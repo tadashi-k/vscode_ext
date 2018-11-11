@@ -15,19 +15,24 @@
     ],
     "main": "./out/extension",
     "contributes": {
-        "commands": [{
-            "command": "extension.deleteLine",
-            "title": "Delete line"
-        },
-        {
-            "command": "extension.deleteEndOfLine",
-            "title": "Delete end of line"
-        },
-        {
-            "command": "extension.yank",
-            "title": "Yank"
-        }
-    ]
+        "commands": [
+            {
+                "command": "extension.deleteLine",
+                "title": "Delete line"
+            },
+            {
+                "command": "extension.deleteEndOfLine",
+                "title": "Delete end of line"
+            },
+            {
+                "command": "extension.yank",
+                "title": "Yank"
+            },
+            {
+                "command": "extension.copyAndUnselect",
+                "title": "Copy and Unselect"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -37,10 +42,14 @@
         "test": "npm run compile && node ./node_modules/vscode/bin/test"
     },
     "devDependencies": {
-        "typescript": "^2.6.1",
-        "vscode": "^1.1.21",
-        "tslint": "^5.8.0",
+        "@types/copy-paste": "^1.1.30",
+        "@types/mocha": "^2.2.42",
         "@types/node": "^8.10.25",
-        "@types/mocha": "^2.2.42"
+        "tslint": "^5.8.0",
+        "typescript": "^2.6.1",
+        "vscode": "^1.1.21"
+    },
+    "dependencies": {
+        "copy-paste": "^1.3.0"
     }
 }
