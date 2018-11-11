@@ -2,8 +2,9 @@
 
 import * as vscode from 'vscode';
 import { copy } from 'copy-paste';
+import { CommandActivator } from './command';
 
-export function activateEditorExt(context: vscode.ExtensionContext) {
+export let EditCommand = (function(){
 	var yankString: string;
 	var yankLine: number = -1;
 	var yankStartOfLine: boolean = false;
@@ -54,7 +55,6 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 	}
 
 	function yank() {
-		// The code you place here will be executed every time your command is executed
 		let editor = vscode.window.activeTextEditor;
 		if (!editor) {
 			return;
@@ -63,6 +63,7 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		let selection = editor.selection;
 		let document = editor.document;
 		var yankPos: vscode.Position;
+		yankLine = -1;
 
 		if (yankStartOfLine) {
 			yankPos = document.lineAt(selection.active).range.start;
@@ -83,20 +84,18 @@ export function activateEditorExt(context: vscode.ExtensionContext) {
 		let selection = editor.selection;
 		let document = editor.document;
 		let str = document.getText(selection);
-		console.log(str);
+		// console.log(str);
 
 		copy(str);
 		let pos = editor.selection.active;
 		editor.selection = new vscode.Selection(pos, pos);
 	}
 
-	function registerCommand(context: vscode.ExtensionContext, name: string, callback: () => void) {
-		let disposable = vscode.commands.registerCommand('extension.' + name, callback);
-		context.subscriptions.push(disposable);
+	function activate(context: vscode.ExtensionContext) {
+		CommandActivator.register(context, [deleteLine, deleteEndOfLine, yank, copyAndUnselect]);
 	}
 
-	registerCommand(context, 'deleteLine', deleteLine);
-	registerCommand(context, 'deleteEndOfLine', deleteEndOfLine);
-	registerCommand(context, 'yank', yank);
-	registerCommand(context, 'copyAndUnselect', copyAndUnselect);
-}
+	return {
+		activate: activate
+	};
+})();
