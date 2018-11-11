@@ -18,21 +18,48 @@
         "commands": [
             {
                 "command": "extension.deleteLine",
-                "title": "Delete line"
+				"title": "Delete line",
+				"category": "edit"
             },
             {
                 "command": "extension.deleteEndOfLine",
-                "title": "Delete end of line"
+                "title": "Delete end of line",
+				"category": "edit"
             },
             {
                 "command": "extension.yank",
-                "title": "Yank"
+                "title": "Yank",
+				"category": "edit"
             },
             {
                 "command": "extension.copyAndUnselect",
-                "title": "Copy and Unselect"
-            }
-        ]
+                "title": "Copy and Unselect",
+				"category": "edit"
+			},
+			{
+				"command": "extension.nextWord",
+				"title": "Next word",
+				"category": "move"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "extension.deleteLine",
+				"key": "ctrl+y"
+			},
+			{
+				"command": "extension.deleteEndOfLine",
+				"key": "ctrl+k"
+			},
+			{
+				"command": "extension.yank",
+				"key": "ctrl+l"
+			},
+			{
+				"command": "extension.nextWord",
+				"key": "ctrl+f"
+			}
+		]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
