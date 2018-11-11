@@ -1,5 +1,9 @@
 'use strict';
 
+/**
+ * Edit Command
+ */
+
 import * as vscode from 'vscode';
 import { copy } from 'copy-paste';
 import { CommandActivator } from './command';
@@ -9,12 +13,7 @@ export let EditCommand = (function(){
 	var yankLine: number = -1;
 	var yankStartOfLine: boolean = false;
 
-	function deleteLine() {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
-
+	function deleteLine(editor : vscode.TextEditor) {
 		let document = editor.document;
 		let linePos = document.lineAt(editor.selection.active).range.start;
 		let range = new vscode.Range(linePos, linePos.translate(1));
@@ -34,12 +33,7 @@ export let EditCommand = (function(){
 		});
 	}
 
-	function deleteEndOfLine() {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
-
+	function deleteEndOfLine(editor : vscode.TextEditor) {
 		let document = editor.document;
 		let pos = editor.selection.active;
 		let lineEnd = document.lineAt(editor.selection.active).range.end;
@@ -54,12 +48,7 @@ export let EditCommand = (function(){
 		});
 	}
 
-	function yank() {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
-
+	function yank(editor : vscode.TextEditor) {
 		let selection = editor.selection;
 		let document = editor.document;
 		var yankPos: vscode.Position;
@@ -76,11 +65,7 @@ export let EditCommand = (function(){
 		});
 	}
 
-	function copyAndUnselect() {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			return;
-		}
+	function copyAndUnselect(editor : vscode.TextEditor) {
 		let selection = editor.selection;
 		let document = editor.document;
 		let str = document.getText(selection);
@@ -91,11 +76,10 @@ export let EditCommand = (function(){
 		editor.selection = new vscode.Selection(pos, pos);
 	}
 
-	function activate(context: vscode.ExtensionContext) {
-		CommandActivator.register(context, [deleteLine, deleteEndOfLine, yank, copyAndUnselect]);
-	}
-
 	return {
-		activate: activate
+		activate: (context: vscode.ExtensionContext) => {
+			CommandActivator.register(context, [deleteLine, deleteEndOfLine, yank, copyAndUnselect]);
+		}
 	};
 })();
+
