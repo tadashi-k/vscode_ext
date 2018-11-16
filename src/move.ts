@@ -9,30 +9,29 @@ import { CommandActivator } from './command';
 
 export let MoveCommand = (function(){
 
-	const SPACE =  0;
-	const UPPER_CASE = 1;
-	const LOWER_CASE = 2;
-	const NUMBER = 3;
-	const UNDERSCORE = 4;
-	const OTHER = 5;
-
-	function charType(c:string) {
+	function charType(c:string) : string {
 		if (/[ \t]/.test(c)) {
-			return SPACE;
+			return ' ';
 		} else if (/[A-Z]/.test(c)) {
-			return UPPER_CASE;
+			return 'A';
 		} else if (/[a-z]/.test(c)) {
-			return LOWER_CASE;
-		} else if (/[0-9]/.test(c)) {
-			return NUMBER;
+			return 'a';
 		} else if (/_/.test(c)) {
-			return UNDERSCORE;
+			return '_';
+		} else if (/[0-9]/.test(c)) {
+			return '[0-9]+';
+		} else if (/[\u3040-\u309f]/.test(c)) {
+			return '[\u3040-\u309f]+';
+		} else if (/[\u30a0-\u30ff]/.test(c)) {
+			return '[\u30a0-\u30ff]+';
+		} else if (/[\u3400-\u9fff]/.test(c)) {
+			return '[\u3400-\u9fff]+';
 		} else {
-			return OTHER;
+			return '[^A-Za-z0-9_ \t\u3000-\u9fff]+';
 		}
 	}
 
-	function nextRegexp(text : string, cursor:number, regexp: RegExp) {
+	function nextRegexp(text: string, cursor: number, regexp: RegExp | null) {
 		if (regexp) {
 			let match = regexp.exec(text.slice(cursor));
 			if (match) {
@@ -42,7 +41,7 @@ export let MoveCommand = (function(){
 		return cursor;
 	}
 
-	function prevRegexp(text : string, cursor:number, regexp: RegExp) {
+	function prevRegexp(text: string, cursor: number, regexp: RegExp | null) {
 		if (regexp) {
 			let match = regexp.exec(text.slice(0, cursor));
 			if (match) {
@@ -64,30 +63,25 @@ export let MoveCommand = (function(){
 			return;
 		}
 
-		let regexp;
-		switch (charType(text.charAt(cursor))) {
-			case SPACE:
+		let regexp = null;
+		let type = charType(text.charAt(cursor));
+		switch (type) {
+			case ' ':
 				break;
-			case UPPER_CASE:
-				regexp = /^[A-Z0-9]+[a-z0-9]*/;
+			case 'A':
+				regexp = /^[A-Z]+[a-z]*/;
 				break;
-			case LOWER_CASE:
-				regexp = /^[a-z0-9]+/;
+			case 'a':
+				regexp = /^[a-z]+/;
 				break;
-			case NUMBER:
-				regexp = /^[A-Za-z0-9]+/;
-				break;
-			case UNDERSCORE:
+			case '_':
 				regexp = /^_[A-Za-z0-9]+/;
 				break;
-			case OTHER:
-				regexp = /^[^A-Za-z0-9_ \t]+/;
+			default:
+				regexp = new RegExp('^' + type);
 				break;
 		}
-		if (regexp) {
-			cursor = nextRegexp(text, cursor, regexp);
-		}
-
+		cursor = nextRegexp(text, cursor, regexp);
 		cursor = nextRegexp(text, cursor, /^[_ \t]+/);
 
 		pos = new vscode.Position(pos.line, cursor);
@@ -109,30 +103,25 @@ export let MoveCommand = (function(){
 		let text = document.lineAt(pos).text;
 		cursor = prevRegexp(text, cursor, /[_ \t]+$/);
 
-		let regexp;
-		switch (charType(text.charAt(cursor - 1))) {
-			case SPACE:
+		let regexp = null;
+		let type = charType(text.charAt(cursor - 1));
+		switch (type) {
+			case ' ':
 				break;
-			case UPPER_CASE:
-				regexp = /[A-Z0-9]+[a-z0-9]*$/;
+			case 'A':
+				regexp = /[A-Z]+[a-z]*$/;
 				break;
-			case LOWER_CASE:
-				regexp = /[A-Z0-9]*[a-z0-9]+$/;
+			case 'a':
+				regexp = /[A-Z]*[a-z]+$/;
 				break;
-			case NUMBER:
-				regexp = /[A-Za-z0-9]+$/;
-				break;
-			case UNDERSCORE:
+			case '_':
 				regexp = /_[A-Za-z0-9]+$/;
 				break;
-			case OTHER:
-				regexp = /[^A-Za-z0-9_ \t]+$/;
+			default:
+				regexp = new RegExp(type + '$');
 				break;
 		}
-		if (regexp) {
-			cursor = prevRegexp(text, cursor, regexp);
-		}
-
+		cursor = prevRegexp(text, cursor, regexp);
 		pos = new vscode.Position(pos.line, cursor);
 		editor.selection = new vscode.Selection(pos, pos);
 	}
