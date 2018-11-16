@@ -129,6 +129,7 @@ export let MoveCommand = (function(){
 	return {
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.register(context, [nextWord, prevWord]);
-		}
+		},
+		nextWord : nextWord
 	};
 })();

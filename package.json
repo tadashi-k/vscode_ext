@@ -23,9 +23,14 @@
             },
             {
                 "command": "extension.deleteEndOfLine",
-                "title": "Delete end of line",
+                "title": "Delete to end of line",
 				"category": "edit"
             },
+			{
+                "command": "extension.deleteWord",
+                "title": "Delete current word",
+				"category": "edit"
+			},
             {
                 "command": "extension.yank",
                 "title": "Yank",
@@ -33,7 +38,7 @@
             },
             {
                 "command": "extension.copyAndUnselect",
-                "title": "Copy and Unselect",
+                "title": "Copy and unselect",
 				"category": "edit"
 			},
 			{
@@ -55,6 +60,10 @@
 			{
 				"command": "extension.deleteEndOfLine",
 				"key": "ctrl+k"
+			},
+			{
+				"command": "extension.deleteWord",
+				"key": "ctrl+t"
 			},
 			{
 				"command": "extension.yank",

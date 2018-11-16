@@ -7,6 +7,7 @@
 import * as vscode from 'vscode';
 import { copy } from 'copy-paste';
 import { CommandActivator } from './command';
+import { MoveCommand } from './move';
 
 export let EditCommand = (function(){
 	var yankString: string;
@@ -36,12 +37,31 @@ export let EditCommand = (function(){
 	function deleteEndOfLine(editor : vscode.TextEditor) {
 		let document = editor.document;
 		let pos = editor.selection.active;
-		let lineEnd = document.lineAt(editor.selection.active).range.end;
+		let lineEnd = document.lineAt(pos).range.end;
 		let range = new vscode.Range(pos, lineEnd);
 
 		yankString = document.getText(range);
 		yankStartOfLine = false;
 		yankLine = -1;
+
+		editor.edit((edit: vscode.TextEditorEdit) => {
+			edit.delete(range);
+		});
+	}
+
+	function deleteWord(editor : vscode.TextEditor) {
+		let document = editor.document;
+		let pos = editor.selection.active;
+		MoveCommand.nextWord(editor);
+		let next = editor.selection.active;
+		let range = new vscode.Range(pos, next);
+
+		if (yankLine !== pos.line) {
+			yankString = '';
+			yankLine = pos.line;
+		}
+		yankString += document.getText(range);
+		yankStartOfLine = false;
 
 		editor.edit((edit: vscode.TextEditorEdit) => {
 			edit.delete(range);
@@ -78,7 +98,7 @@ export let EditCommand = (function(){
 
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [deleteLine, deleteEndOfLine, yank, copyAndUnselect]);
+			CommandActivator.register(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect]);
 		}
 	};
 })();
