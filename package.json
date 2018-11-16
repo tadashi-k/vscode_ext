@@ -40,6 +40,11 @@
 				"command": "extension.nextWord",
 				"title": "Next word",
 				"category": "move"
+			},
+			{
+				"command": "extension.prevWord",
+				"title": "Previous word",
+				"category": "move"
 			}
 		],
 		"keybindings": [
@@ -58,6 +63,10 @@
 			{
 				"command": "extension.nextWord",
 				"key": "ctrl+f"
+			},
+			{
+				"command": "extension.prevWord",
+				"key": "ctrl+a"
 			}
 		]
     },
