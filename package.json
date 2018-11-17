@@ -42,6 +42,11 @@
 				"category": "edit"
 			},
 			{
+                "command": "extension.wordComplete",
+                "title": "Word complete",
+				"category": "edit"
+			},
+			{
 				"command": "extension.nextWord",
 				"title": "Next word",
 				"category": "move"
@@ -68,6 +73,10 @@
 			{
 				"command": "extension.yank",
 				"key": "ctrl+l"
+			},
+			{
+				"command": "extension.wordComplete",
+				"key": "ctrl+n"
 			},
 			{
 				"command": "extension.nextWord",
