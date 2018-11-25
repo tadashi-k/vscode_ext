@@ -24,10 +24,12 @@ export let MoveCommand = (function(){
 			return '[\u3040-\u309f]+';
 		} else if (/[\u30a0-\u30ff]/.test(c)) {
 			return '[\u30a0-\u30ff]+';
+		} else if (/[\u3100-\u33ff]/.test(c)) {
+			return '[\u3100-\u33ff]+';
 		} else if (/[\u3400-\u9fff]/.test(c)) {
 			return '[\u3400-\u9fff]+';
 		} else {
-			return '[^A-Za-z0-9_ \t\u3000-\u9fff]+';
+			return '[^A-Za-z0-9_ \t\u3040-\u9fff]+';
 		}
 	}
 
