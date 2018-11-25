@@ -142,6 +142,8 @@ export let MoveCommand = (function(){
 		if (mark) {
 			editor.selection = new vscode.Selection(mark, mark);
 			markMap.set(key, current);
+			const revealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport;
+			editor.revealRange(editor.selection, revealType);
 		}
 	}
 
