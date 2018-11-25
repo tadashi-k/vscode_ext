@@ -55,6 +55,16 @@
 				"command": "extension.prevWord",
 				"title": "Previous word",
 				"category": "move"
+			},
+			{
+				"command": "extension.mark",
+				"title": "Mark current position",
+				"category": "move"
+			},
+			{
+				"command": "extension.swapMark",
+				"title": "Swap mark and current position",
+				"category": "move"
 			}
 		],
 		"keybindings": [
@@ -85,6 +95,14 @@
 			{
 				"command": "extension.prevWord",
 				"key": "ctrl+a"
+			},
+			{
+				"command": "extension.mark",
+				"key": "escape space"
+			},
+			{
+				"command": "extension.swapMark",
+				"key": "ctrl+p"
 			}
 		]
     },

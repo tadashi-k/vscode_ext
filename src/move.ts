@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { CommandActivator } from './command';
 
 export let MoveCommand = (function(){
+	let markMap = new Map<string, vscode.Position>();
 
 	function charType(c:string) : string {
 		if (/[ \t]/.test(c)) {
@@ -128,9 +129,25 @@ export let MoveCommand = (function(){
 		editor.selection = new vscode.Selection(pos, pos);
 	}
 
+	function mark(editor: vscode.TextEditor) {
+		let key = editor.document.fileName;
+		let pos = editor.selection.active;
+		markMap.set(key, pos);
+	}
+
+	function swapMark(editor: vscode.TextEditor) {
+		let key = editor.document.fileName;
+		let current = editor.selection.active;
+		let mark = markMap.get(key);
+		if (mark) {
+			editor.selection = new vscode.Selection(mark, mark);
+			markMap.set(key, current);
+		}
+	}
+
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [nextWord, prevWord]);
+			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark]);
 		},
 		nextWord : nextWord
 	};
