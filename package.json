@@ -98,7 +98,8 @@
 			},
 			{
 				"command": "extension.mark",
-				"key": "escape space"
+				"key": "escape space",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			},
 			{
 				"command": "extension.swapMark",
