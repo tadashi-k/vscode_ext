@@ -12,7 +12,7 @@ import { MoveCommand } from './move';
 export let EditCommand = (function(){
 	var yankString: string;
 	var yankLine: number = -1;
-	var yankStartOfLine: boolean = false;
+	var yankStartOfLine: boolean = false; // do yank by line if true
 	var completeWords : string[] = [];
 	var completePos : vscode.Position | null = null;
 	var completeIndex : number = -1;
@@ -24,7 +24,7 @@ export let EditCommand = (function(){
 
 		let line = document.getText(range);
 
-		if (linePos.line === yankLine) {
+		if (linePos.line === yankLine && yankStartOfLine === true) {
 			yankString += line;
 		} else {
 			yankString = line;
@@ -152,9 +152,14 @@ export let EditCommand = (function(){
 		}
 
 		function buildList(ref: string) {
-			let regexp = new RegExp('[^a-zA-Z0-9_]' + ref + '[a-zA-Z0-9_]+', 'g');
+			let regexp = new RegExp('[^a-zA-Z0-9_]' + ref + '[a-zA-Z0-9_]+', 'gi');
 			completeWords.length = 0;
 			completeIndex = 0;
+
+			// search current line
+			appendWord(document.lineAt(pos.line).text);
+
+			// spread search area from current line
 			for (let i = 1; i < SEARCH_RANGE; i++) {
 				let ref: number;
 				ref = pos.line - i;
