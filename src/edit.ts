@@ -5,7 +5,6 @@
  */
 
 import * as vscode from 'vscode';
-import { copy } from 'copy-paste';
 import { CommandActivator } from './command';
 import { MoveCommand } from './move';
 
@@ -93,9 +92,10 @@ export let EditCommand = (function(){
 		let document = editor.document;
 		let str = document.getText(selection);
 
-		copy(str);
-		let pos = editor.selection.active;
-		editor.selection = new vscode.Selection(pos, pos);
+		vscode.env.clipboard.writeText(str).then(() => {
+			let pos = editor.selection.active;
+			editor.selection = new vscode.Selection(pos, pos);
+		});
 	}
 
 	function wordComplete(editor: vscode.TextEditor) {
@@ -183,7 +183,7 @@ export let EditCommand = (function(){
 				do {
 					match = regexp.exec(text);
 					if (match) {
-						let word = match[0].slice(1); // delete first not word charactor
+						let word = match[0].slice(1); // delete first not word character
 						let found = completeWords.find((string) => {
 							return string === word;
 						});
