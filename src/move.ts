@@ -7,9 +7,20 @@
 import * as vscode from 'vscode';
 import { CommandActivator } from './command';
 
+class Mark {
+	public constructor(document: vscode.TextDocument, offset: number, content: string) {
+		this.document = document;
+		this.offset = offset;
+		this.content = content;
+	}
+	public document: vscode.TextDocument;
+	public offset: number;
+	public content: string;
+};
+
 export let MoveCommand = (function(){
-	let markMap = new Map<string, vscode.Position[]>();
-	const MAX_MARK = 10;
+	const MAX_MARK = 20;
+	let markList: Mark[] = [];
 
 	function charType(c:string) : string {
 		if (/[ \t]/.test(c)) {
@@ -131,67 +142,105 @@ export let MoveCommand = (function(){
 	}
 
 	function mark(editor: vscode.TextEditor) {
-		let key = editor.document.fileName;
+		let document = editor.document;
 		let pos = editor.selection.active;
-		let list = markMap.get(key);
-		if (list) {
-			list.push(pos);
-			while (list.length > MAX_MARK) {
-				list.shift();
-			}
-		} else {
-			markMap.set(key, [pos]);
+		let offset = document.offsetAt(pos);
+
+		let lineEnd = document.lineAt(pos).range.end;
+		let range = new vscode.Range(pos, lineEnd);
+		let content = document.getText(range);
+		markList.unshift(new Mark(document, offset, content));
+
+		while (markList.length > MAX_MARK) {
+			markList.pop();
 		}
 	}
 
-	function swapMark(editor: vscode.TextEditor) {
-		let key = editor.document.fileName;
-		let current = editor.selection.active;
-		let list = markMap.get(key);
-		if (list && list[0]) {
-			let idx = list.length - 1;
-			let mark = list[idx];
-			list[idx] = current;
-			editor.selection = new vscode.Selection(mark, mark);
+	function openDocumentByMark(editor: vscode.TextEditor, mark: Mark) {
+		if (editor.document.fileName != mark.document.fileName) {
+			vscode.workspace.openTextDocument(mark.document.fileName).then(
+				(document) => vscode.window.showTextDocument(document).then(
+					(editor) => moveTo(editor)
+				)
+			);
+		} else {
+			moveTo(editor);
+		}
+
+		function moveTo(editor: vscode.TextEditor) {
+			let pos = editor.document.positionAt(mark.offset);
+			editor.selection = new vscode.Selection(pos, pos);
 			const revealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport;
 			editor.revealRange(editor.selection, revealType);
 		}
 	}
 
+	function swapMark(editor: vscode.TextEditor) {
+		if (markList[0]) {
+			let recent = markList[0];
+			markList.shift();
+			mark(editor);
+			openDocumentByMark(editor, recent);
+		}
+	}
+
+	vscode.workspace.onDidChangeTextDocument((event) => {
+		// console.log('change', event.document.fileName);
+		event.contentChanges.forEach((change) => {
+			console.log(change.rangeOffset, change.rangeLength, change.text.length);
+			markList.forEach((mark) => {
+				if (mark.document.fileName == event.document.fileName) {
+					if (mark.offset > change.rangeOffset) {
+						if (mark.offset < change.rangeOffset + change.rangeLength) {
+							mark.offset = change.rangeOffset;
+						} else {
+							mark.offset = mark.offset - change.rangeLength + change.text.length;
+						}
+					}
+				}
+			});
+		});
+	});
+
+	vscode.workspace.onDidCloseTextDocument((event) => {
+		//console.log('close', event.fileName);
+		let idx = 0;
+		while (idx < markList.length) {
+			if (markList[idx].document.fileName == event.fileName) {
+				markList.splice(idx, 1);
+			} else {
+				idx++;
+			}
+		}
+	});
+
 	function gotoMark(editor: vscode.TextEditor) {
-		let document = editor.document;
-		let key = document.fileName;
-		let list = markMap.get(key);
-		if (!list) {
+		if (markList.length == 0) {
 			return;
 		}
+
 		let items: string[] = [];
-		for (let i = 0; i < list.length; i++) {
-			let idx = list.length - 1 - i;
-			let pos = list[idx];
-			let lineEnd = document.lineAt(pos).range.end;
-			let range = new vscode.Range(pos, lineEnd);
-			let content = document.getText(range);
-			let str = (i + 1) + ', line: ' + pos.line + ', Character: ' + pos.character + ', ' + content;
+		for (let i = 0; i < markList.length; i++) {
+			let mark = markList[i];
+			let pos = mark.document.positionAt(mark.offset);
+			let filepath = mark.document.fileName.split(/[/\\]/);
+			let filename = (filepath.length > 0) ? filepath[filepath.length - 1] : '';
+			let str = (i + 1) + ': ' + filename + ', Ln ' + (pos.line + 1) + ', Col ' + (pos.character + 1) + ', ' + mark.content;
 			items.push(str);
 		}
 		vscode.window.showQuickPick(items).then(
 			(selection) => {
 				if (selection) {
-					let match = /^[0-9]+,/.exec(selection);
-					if (match && list) {
-						let idx = list.length - parseInt(match[0]);
-						if (0 <= idx && idx < list.length) {
-							let mark = list[idx]
-							editor.selection = new vscode.Selection(mark, mark);
-							const revealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport;
-							editor.revealRange(editor.selection, revealType);
+					let match = /^[0-9]+:/.exec(selection);
+					if (match) {
+						let idx = parseInt(match[0]) - 1;
+						if (0 <= idx && idx < markList.length) {
+							openDocumentByMark(editor, markList[idx]);
 						}
 					}
 				}
-			},
-			(reason) => { }
-		);
+			}
+		)
 	}
 
 	return {
