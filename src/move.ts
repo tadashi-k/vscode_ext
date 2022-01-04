@@ -8,7 +8,8 @@ import * as vscode from 'vscode';
 import { CommandActivator } from './command';
 
 export let MoveCommand = (function(){
-	let markMap = new Map<string, vscode.Position>();
+	let markMap = new Map<string, vscode.Position[]>();
+	const MAX_MARK = 10;
 
 	function charType(c:string) : string {
 		if (/[ \t]/.test(c)) {
@@ -132,24 +133,70 @@ export let MoveCommand = (function(){
 	function mark(editor: vscode.TextEditor) {
 		let key = editor.document.fileName;
 		let pos = editor.selection.active;
-		markMap.set(key, pos);
+		let list = markMap.get(key);
+		if (list) {
+			list.push(pos);
+			while (list.length > MAX_MARK) {
+				list.shift();
+			}
+		} else {
+			markMap.set(key, [pos]);
+		}
 	}
 
 	function swapMark(editor: vscode.TextEditor) {
 		let key = editor.document.fileName;
 		let current = editor.selection.active;
-		let mark = markMap.get(key);
-		if (mark) {
+		let list = markMap.get(key);
+		if (list && list[0]) {
+			let idx = list.length - 1;
+			let mark = list[idx];
+			list[idx] = current;
 			editor.selection = new vscode.Selection(mark, mark);
-			markMap.set(key, current);
 			const revealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport;
 			editor.revealRange(editor.selection, revealType);
 		}
 	}
 
+	function gotoMark(editor: vscode.TextEditor) {
+		let document = editor.document;
+		let key = document.fileName;
+		let list = markMap.get(key);
+		if (!list) {
+			return;
+		}
+		let items: string[] = [];
+		for (let i = 0; i < list.length; i++) {
+			let idx = list.length - 1 - i;
+			let pos = list[idx];
+			let lineEnd = document.lineAt(pos).range.end;
+			let range = new vscode.Range(pos, lineEnd);
+			let content = document.getText(range);
+			let str = (i + 1) + ', line: ' + pos.line + ', Character: ' + pos.character + ', ' + content;
+			items.push(str);
+		}
+		vscode.window.showQuickPick(items).then(
+			(selection) => {
+				if (selection) {
+					let match = /^[0-9]+,/.exec(selection);
+					if (match && list) {
+						let idx = list.length - parseInt(match[0]);
+						if (0 <= idx && idx < list.length) {
+							let mark = list[idx]
+							editor.selection = new vscode.Selection(mark, mark);
+							const revealType = vscode.TextEditorRevealType.InCenterIfOutsideViewport;
+							editor.revealRange(editor.selection, revealType);
+						}
+					}
+				}
+			},
+			(reason) => { }
+		);
+	}
+
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark]);
+			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark, gotoMark]);
 		},
 		nextWord : nextWord
 	};
