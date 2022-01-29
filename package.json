@@ -42,6 +42,16 @@
 				"category": "edit"
 			},
 			{
+				"command": "extension.cut",
+				"title": "Cut",
+				"category": "edit"
+			},
+			{
+				"command": "extension.paste",
+				"title": "Pate",
+				"category": "edit"
+			},
+			{
 				"command": "extension.wordComplete",
 				"title": "Word complete",
 				"category": "edit"
@@ -70,6 +80,16 @@
 				"command": "extension.gotoMark",
 				"title": "Go to selected mark position",
 				"category": "move"
+			},
+			{
+				"command": "extension.macroRecord",
+				"title": "Start and stop macro recoding",
+				"category": "macro"
+			},
+			{
+				"command": "extension.macroReplay",
+				"title": "Marco replay",
+				"category": "macro"
 			}
 		],
 		"keybindings": [
@@ -107,8 +127,22 @@
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			},
 			{
+				"key": "escape p",
+				"command": "extension.gotoMark",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
 				"command": "extension.swapMark",
 				"key": "ctrl+p"
+			},
+			{
+				"key": "ctrl+[",
+				"command": "extension.macroReplay"
+			},
+			{
+				"key": "escape [",
+				"command": "extension.macroRecord",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
 		]
 	},

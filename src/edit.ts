@@ -7,6 +7,7 @@
 import * as vscode from 'vscode';
 import { CommandActivator } from './command';
 import { MoveCommand } from './move';
+import { MacroCommand } from './macro';
 
 export let EditCommand = (function(){
 	var yankString: string;
@@ -31,9 +32,10 @@ export let EditCommand = (function(){
 		}
 		yankLine = linePos.line;
 
-		editor.edit((edit: vscode.TextEditorEdit) => {
+		editor.edit((edit) => {
 			edit.delete(range);
 		});
+		MacroCommand.push(deleteLine);
 	}
 
 	function deleteEndOfLine(editor : vscode.TextEditor) {
@@ -46,9 +48,10 @@ export let EditCommand = (function(){
 		yankStartOfLine = false;
 		yankLine = -1;
 
-		editor.edit((edit: vscode.TextEditorEdit) => {
+		editor.edit((edit) => {
 			edit.delete(range);
 		});
+		MacroCommand.push(deleteEndOfLine);
 	}
 
 	function deleteWord(editor : vscode.TextEditor) {
@@ -65,9 +68,10 @@ export let EditCommand = (function(){
 		yankString += document.getText(range);
 		yankStartOfLine = false;
 
-		editor.edit((edit: vscode.TextEditorEdit) => {
+		editor.edit((edit) => {
 			edit.delete(range);
 		});
+		MacroCommand.push(deleteWord);
 	}
 
 	function yank(editor : vscode.TextEditor) {
@@ -82,20 +86,42 @@ export let EditCommand = (function(){
 			yankPos = selection.active;
 		}
 
-		editor.edit((edit: vscode.TextEditorEdit) => {
+		editor.edit((edit) => {
 			edit.insert(yankPos, yankString);
 		});
+		MacroCommand.push(yank);
 	}
 
-	function copyAndUnselect(editor : vscode.TextEditor) {
-		let selection = editor.selection;
-		let document = editor.document;
-		let str = document.getText(selection);
+	function copyToClipboard(editor: vscode.TextEditor) {
+		let str = editor.document.getText(editor.selection);
+		return vscode.env.clipboard.writeText(str);
+	}
 
-		vscode.env.clipboard.writeText(str).then(() => {
+	function copyAndUnselect(editor: vscode.TextEditor) {
+		copyToClipboard(editor).then(() => {
 			let pos = editor.selection.active;
 			editor.selection = new vscode.Selection(pos, pos);
 		});
+		MacroCommand.push(copyAndUnselect);
+	}
+
+	function cut(editor: vscode.TextEditor) {
+		copyToClipboard(editor).then(() => {
+			editor.edit((edit) => {
+				edit.delete(editor.selection);
+			});
+		});
+
+		MacroCommand.push(cut);
+	}
+
+	function paste(editor: vscode.TextEditor) {
+		vscode.env.clipboard.readText().then((value) => {
+			editor.edit((edit) => {
+				edit.replace(editor.selection, value);
+			});
+		});
+		MacroCommand.push(paste);
 	}
 
 	function wordComplete(editor: vscode.TextEditor) {
@@ -198,7 +224,7 @@ export let EditCommand = (function(){
 
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect, wordComplete]);
+			CommandActivator.register(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect, cut, paste, wordComplete]);
 		}
 	};
 })();

@@ -6,6 +6,7 @@
 
 import * as vscode from 'vscode';
 import { CommandActivator } from './command';
+import { MacroCommand } from './macro';
 
 class Mark {
 	public constructor(document: vscode.TextDocument, offset: number, content: string) {
@@ -21,6 +22,7 @@ class Mark {
 export let MoveCommand = (function(){
 	const MAX_MARK = 20;
 	let markList: Mark[] = [];
+	let disableMacro = false;
 
 	function charType(c:string) : string {
 		if (/[ \t]/.test(c)) {
@@ -101,6 +103,9 @@ export let MoveCommand = (function(){
 
 		pos = new vscode.Position(pos.line, cursor);
 		editor.selection = new vscode.Selection(pos, pos);
+		if (disableMacro == false) {
+			MacroCommand.push(nextWord);
+		}
 	}
 
 	function prevWord(editor: vscode.TextEditor) {
@@ -139,6 +144,7 @@ export let MoveCommand = (function(){
 		cursor = prevRegexp(text, cursor, regexp);
 		pos = new vscode.Position(pos.line, cursor);
 		editor.selection = new vscode.Selection(pos, pos);
+		MacroCommand.push(prevWord);
 	}
 
 	function mark(editor: vscode.TextEditor) {
@@ -182,12 +188,12 @@ export let MoveCommand = (function(){
 			mark(editor);
 			openDocumentByMark(editor, recent);
 		}
+		MacroCommand.push(swapMark);
 	}
 
 	vscode.workspace.onDidChangeTextDocument((event) => {
 		// console.log('change', event.document.fileName);
 		event.contentChanges.forEach((change) => {
-			console.log(change.rangeOffset, change.rangeLength, change.text.length);
 			markList.forEach((mark) => {
 				if (mark.document.fileName == event.document.fileName) {
 					if (mark.offset > change.rangeOffset) {
@@ -247,6 +253,10 @@ export let MoveCommand = (function(){
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark, gotoMark]);
 		},
-		nextWord : nextWord
+		nextWord : (editor: vscode.TextEditor) => {
+			disableMacro = true;
+			nextWord(editor);
+			disableMacro = false;
+		}
 	};
 })();
