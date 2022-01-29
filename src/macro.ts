@@ -149,13 +149,15 @@ function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs):
 				}
 				break;
 			case Command.Delete:
+				const offset = editor.document.offsetAt(active) + arg.offset;
+				const start = editor.document.positionAt(offset);
+				const end = editor.document.positionAt(offset + 1);
 				editor.edit((edit: vscode.TextEditorEdit) => {
-					const offset = editor.document.offsetAt(active) + arg.offset;
-					const start = editor.document.positionAt(offset);
-					const end = editor.document.positionAt(offset + 1);
 					edit.delete(new vscode.Range(start, end));
+				}).then(() => {
 					editor.selection = new vscode.Selection(start, start);
-				}).then(() => resolve(), reject);
+					resolve();
+				}, reject);
 				break;
 			default:
 				reject('invalid command mode');
@@ -336,7 +338,7 @@ export let MacroCommand = (function (){
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.register(context, [macroRecord, macroReplay]);
 		},
-		push: (func : (editor: vscode.TextEditor)=>void) => {
+		push: (func: (editor: vscode.TextEditor) => void) => {
 			if (recording) {
 				pushCommand(func);
 			}

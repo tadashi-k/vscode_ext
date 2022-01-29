@@ -118,7 +118,8 @@ export let EditCommand = (function(){
 	function paste(editor: vscode.TextEditor) {
 		vscode.env.clipboard.readText().then((value) => {
 			editor.edit((edit) => {
-				edit.replace(editor.selection, value);
+				edit.delete(editor.selection);
+				edit.insert(editor.selection.active, value);
 			});
 		});
 		MacroCommand.push(paste);
