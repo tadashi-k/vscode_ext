@@ -25,9 +25,13 @@ class CommandArgs {
 	select: boolean = false;
 	text: string = '';
 	offset: number = 0;
+	internal?: (editor: vscode.TextEditor) => void;
 }
 
-type ReplayFunction = (editor: vscode.TextEditor, command: Command, arg: CommandArgs) => void;
+// temporary store of number of indent characters when execute lineBreakInsert
+let indentDepth : number = 0;
+
+type ReplayFunction = (editor: vscode.TextEditor, command: Command, arg: CommandArgs) => Thenable<void>;
 
 class MacroStore {
 	func: ReplayFunction;
@@ -52,67 +56,123 @@ class MacroStore {
 		this.arg.offset = offset;
 	}
 
+	setFunction(internal: (editor: vscode.TextEditor) => void) {
+		this.arg.internal = internal;
+	}
+
 	execute(editor: vscode.TextEditor) {
 		//console.log('replay: ', this.command, this.arg);
-		this.func(editor, this.command, this.arg);
+		return this.func(editor, this.command, this.arg);
 	}
 }
 
-function replayMove(editor: vscode.TextEditor, mode : Command, arg: CommandArgs) {
-	let active = editor.selection.active;
-	const anchor = editor.selection.anchor;
-	const offset = editor.document.offsetAt(active);
-	const isSelect = arg.select;
+function replayMove(editor: vscode.TextEditor, mode : Command, arg: CommandArgs) : Thenable<void> {
+	return new Promise<void>((resolve, reject) => {
+		let active = editor.selection.active;
+		const anchor = editor.selection.anchor;
+		const offset = editor.document.offsetAt(active);
+		const isSelect = arg.select;
 
-	let wordRange : vscode.Range | undefined;
-	let textLine : vscode.TextLine;
+		let wordRange: vscode.Range | undefined;
+		let textLine: vscode.TextLine;
 
-	switch (mode) {
-		case Command.CursorLeft:
-			active = editor.document.positionAt(offset - 1);
-			break;
-		case Command.CursorRight:
-			active = editor.document.positionAt(offset + 1);
-			break;
-		case Command.WordLeft:
-			active = editor.document.positionAt(offset - 1);
-			wordRange = editor.document.getWordRangeAtPosition(active);
-			if (wordRange) {
-				active = wordRange.start;
-			}
-			break;
-		case Command.WordRight: 
-			active = editor.document.positionAt(offset + 1);
-			wordRange = editor.document.getWordRangeAtPosition(active);
-			if (wordRange) {
-				active = wordRange.end;
-			}
-			break;
-		case Command.LineTop:
-			textLine = editor.document.lineAt(active);
-			active = new vscode.Position(active.line, textLine.firstNonWhitespaceCharacterIndex);
-			break;
-		case Command.LineEnd:
-			textLine = editor.document.lineAt(active);
-			active = textLine.range.end;
-			break;
-		case Command.LineUp:
-			if (arg) {
-				vscode.commands.executeCommand('cursorUpSelect');
-			} else {
-				vscode.commands.executeCommand('cursorUp');
-			}
-			return;
-		case Command.LineDown:
-			if (arg) {
-				vscode.commands.executeCommand('cursorDownSelect');
-			} else {
-				vscode.commands.executeCommand('cursorDown');
-			}
-			return;
-	}
+		switch (mode) {
+			case Command.CursorLeft:
+				active = editor.document.positionAt(offset - 1);
+				break;
+			case Command.CursorRight:
+				active = editor.document.positionAt(offset + 1);
+				break;
+			case Command.WordLeft:
+				active = editor.document.positionAt(offset - 1);
+				wordRange = editor.document.getWordRangeAtPosition(active);
+				if (wordRange) {
+					active = wordRange.start;
+				}
+				break;
+			case Command.WordRight:
+				active = editor.document.positionAt(offset + 1);
+				wordRange = editor.document.getWordRangeAtPosition(active);
+				if (wordRange) {
+					active = wordRange.end;
+				}
+				break;
+			case Command.LineTop:
+				textLine = editor.document.lineAt(active);
+				active = new vscode.Position(active.line, textLine.firstNonWhitespaceCharacterIndex);
+				break;
+			case Command.LineEnd:
+				textLine = editor.document.lineAt(active);
+				active = textLine.range.end;
+				break;
+			case Command.LineUp:
+				if (arg.select) {
+					vscode.commands.executeCommand('cursorUpSelect').then(() => resolve(), reject);
+				} else {
+					vscode.commands.executeCommand('cursorUp').then(() => resolve(), reject);
+				}
+				return;
+			case Command.LineDown:
+				if (arg.select) {
+					vscode.commands.executeCommand('cursorDownSelect').then(() => resolve(), reject);
+				} else {
+					vscode.commands.executeCommand('cursorDown').then(() => resolve(), reject);
+				}
+				return;
+		}
 
-	editor.selection = new vscode.Selection(active, isSelect ? anchor : active);
+		editor.selection = new vscode.Selection(active, isSelect ? anchor : active);
+		resolve();
+	});
+}
+
+function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs): Thenable<void> {
+	return new Promise<void>((resolve, reject) => {
+		//console.log('replayEdit', mode, arg.offset, arg.text);
+		let active = editor.selection.active;
+		switch (mode) {
+			case Command.Insert:
+				if (arg.text.startsWith('\n') || arg.text.startsWith('\r')) {
+					vscode.commands.executeCommand('lineBreakInsert').then(() => {
+						active = new vscode.Position(active.line + 1, indentDepth);
+						editor.selection = new vscode.Selection(active, active);
+						resolve();
+					});
+				} else {
+					editor.edit((edit: vscode.TextEditorEdit) => {
+						edit.insert(active, arg.text);
+					}).then(() => {
+						active = active.translate(0, arg.offset)
+						editor.selection = new vscode.Selection(active, active);
+						resolve();
+					}, reject);
+				}
+				break;
+			case Command.Delete:
+				editor.edit((edit: vscode.TextEditorEdit) => {
+					const offset = editor.document.offsetAt(active) + arg.offset;
+					const start = editor.document.positionAt(offset);
+					const end = editor.document.positionAt(offset + 1);
+					edit.delete(new vscode.Range(start, end));
+					editor.selection = new vscode.Selection(start, start);
+				}).then(() => resolve(), reject);
+				break;
+			default:
+				reject('invalid command mode');
+				break;
+		}
+	});
+}
+
+function replayInternalCommand(editor: vscode.TextEditor, mode: Command, arg: CommandArgs): Thenable<void> {
+	return new Promise<void>((resolve, reject) => {
+		if (arg.internal) {
+			arg.internal(editor);
+			resolve();
+		} else {
+			reject('execute undefined function');
+		}
+	});
 }
 
 export let MacroCommand = (function (){
@@ -120,7 +180,6 @@ export let MacroCommand = (function (){
 	let cmdTime = 0;
 	let lastSelection: vscode.Selection | null = null;
 	let lastOffset : number = 0;
-	let lastChangeLength: number = 0;
 	let doEdit = false;
 	let list: MacroStore[] = [];
 
@@ -155,7 +214,7 @@ export let MacroCommand = (function (){
 
 	vscode.workspace.onDidChangeTextDocument((event) => {
 		if (event.contentChanges[0]) {
-			lastChangeLength = event.contentChanges[0].text.length;
+			indentDepth = event.contentChanges[0].text.length - 1;
 		}
 		if (recording) {
 			pushEdit(event);
@@ -165,42 +224,11 @@ export let MacroCommand = (function (){
 	let item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 	item.text = 'Macro';
 
-	function replayEdit(editor: vscode.TextEditor, mode : Command, arg: CommandArgs) {
-		console.log('replayEdit', mode, arg.offset, arg.text);
-		let active = editor.selection.active;
-		switch(mode) {
-			case Command.Insert:
-				if (arg.text.startsWith('\n') || arg.text.startsWith('\r')) {
-					vscode.commands.executeCommand('lineBreakInsert').then(() => {
-						if (lastChangeLength > 0) {
-							active = new vscode.Position(active.line + 1, lastChangeLength - 1);
-							editor.selection = new vscode.Selection(active, active);
-						}
-					});
-				} else {
-					editor.edit((edit: vscode.TextEditorEdit) => {
-						edit.insert(active, arg.text);
-					});
-					active = active.translate(0, arg.offset)
-					editor.selection = new vscode.Selection(active, active);
-				}
-				break;
-			case Command.Delete:
-				editor.edit((edit: vscode.TextEditorEdit) => {
-					const offset = editor.document.offsetAt(active) + arg.offset;
-					const start = editor.document.positionAt(offset);
-					const end = editor.document.positionAt(offset + 1);
-					edit.delete(new vscode.Range(start, end));
-					editor.selection = new vscode.Selection(start, start);
-				});
-				break;
-		}
-	}
-
 	function pushCommand(func: (editor: vscode.TextEditor) => void) {
 		cmdTime = Date.now();
-		console.log('store command', func.name);
-		list.push(new MacroStore(func));
+		const cmd = new MacroStore(replayInternalCommand);
+		cmd.setFunction(func);
+		list.push(cmd);
 	}
 
 	function pushMove(event : vscode.TextEditorSelectionChangeEvent) {
@@ -214,7 +242,6 @@ export let MacroCommand = (function (){
 
 			if (doEdit) {
 				const delta = offset - lastOffset;
-				console.log('delta', delta);
 				if (delta != 0) {
 					const last = list[list.length - 1];
 					last.setOffset(delta);
@@ -223,45 +250,41 @@ export let MacroCommand = (function (){
 				return;
 			}
 
-			//console.log(active.character);
-
 			let cmd: MacroStore | null = null;
 			if (offset == lastOffset + 1) {
-				console.log('cursor right');
+				//console.log('cursor right');
 				cmd = new MacroStore(replayMove, Command.CursorRight);
 			} else if (offset == lastOffset - 1) {
-				console.log('cursor left');
+				//console.log('cursor left');
 				cmd = new MacroStore(replayMove, Command.CursorLeft);
 			} else if (offset > lastOffset && wordRange && wordRange.end.isEqual(active)) {
-				console.log("word right");
+				//console.log("word right");
 				cmd = new MacroStore(replayMove, Command.WordRight);
 			} else if (offset < lastOffset && wordRange && wordRange.start.isEqual(active)) {
-				console.log("word left");
+				//console.log("word left");
 				cmd = new MacroStore(replayMove, Command.WordLeft);
 			} else if (active.line == lastSelection.active.line) {
 				let textLine = document.lineAt(active);
 				if (active.character == textLine.firstNonWhitespaceCharacterIndex) {
-					console.log('cursor line top');
+					//console.log('cursor line top');
 					cmd = new MacroStore(replayMove, Command.LineTop);
 				} else if (active.isEqual(textLine.range.end)) {
-					console.log('cursor line end');
+					//console.log('cursor line end');
 					cmd = new MacroStore(replayMove, Command.LineEnd);
 				}
 			} else if (active.line == lastSelection.active.line + 1) {
-				console.log('cursor down', active.line, lastSelection.active.line);
+				//console.log('cursor down', active.line, lastSelection.active.line);
 				cmd = new MacroStore(replayMove, Command.LineDown);
 			} else if (active.line == lastSelection.active.line - 1) {
-				console.log('cursor up', active.line, lastSelection.active.line);
+				//console.log('cursor up', active.line, lastSelection.active.line);
 				cmd = new MacroStore(replayMove, Command.LineUp);
 			}
 			if (cmd) {
 				if (anchor.isEqual(active) == false) {
 					cmd.withSelect();
-					console.log('with select');
 				}
 				list.push(cmd);
 			}
-			//console.log('move', selections[0].active.line, selections[0].active.character);
 		}
 	}
 
@@ -270,17 +293,16 @@ export let MacroCommand = (function (){
 		if (Date.now() - cmdTime > 100 && changes[0]) {
 			const change = changes[0];
 			if (change.text != '') {
-				console.log('insert', change.rangeOffset, change.text);
+				//console.log('insert', change.rangeOffset, change.text);
 				const cmd = new MacroStore(replayEdit, Command.Insert);
 				cmd.setText(change.text);
 				list.push(cmd);
 				doEdit = true;
 			} else if (change.rangeLength > 0 && change.text == '') {
-				console.log('delete', change.rangeOffset, change.rangeLength);
+				//console.log('delete', change.rangeOffset, change.rangeLength);
 				list.push(new MacroStore(replayEdit, Command.Delete));
 				doEdit = true;
 			}
-			//console.log('store edit', change.rangeOffset, change.rangeLength, change.text);
 		}
 	}
 
@@ -303,11 +325,11 @@ export let MacroCommand = (function (){
 		}
 	}
 
-	function macroReplay(editor: vscode.TextEditor) {
-		console.log('play', list.length);
-		list.forEach((cmd) => {
-			cmd.execute(editor);
-		});
+	async function macroReplay(editor: vscode.TextEditor) {
+		//console.log('play', list.length);
+		for (let i = 0; i < list.length; i++) {
+			await list[i].execute(editor);
+		}
 	}
 
 	return {
