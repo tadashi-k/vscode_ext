@@ -15,8 +15,6 @@ enum Command {
 	WordRight,
 	LineTop,
 	LineEnd,
-	LineUp,
-	LineDown,
 	Insert,
 	Delete
 }
@@ -68,61 +66,33 @@ class MacroStore {
 
 function replayMove(editor: vscode.TextEditor, mode : Command, arg: CommandArgs) : Thenable<void> {
 	return new Promise<void>((resolve, reject) => {
-		let active = editor.selection.active;
-		const anchor = editor.selection.anchor;
-		const offset = editor.document.offsetAt(active);
-		const isSelect = arg.select;
 
-		let wordRange: vscode.Range | undefined;
-		let textLine: vscode.TextLine;
-
+		let cmdName = '';
 		switch (mode) {
 			case Command.CursorLeft:
-				active = editor.document.positionAt(offset - 1);
+				cmdName = 'cursorLeft';
 				break;
 			case Command.CursorRight:
-				active = editor.document.positionAt(offset + 1);
+				cmdName = 'cursorRight';
 				break;
 			case Command.WordLeft:
-				active = editor.document.positionAt(offset - 1);
-				wordRange = editor.document.getWordRangeAtPosition(active);
-				if (wordRange) {
-					active = wordRange.start;
-				}
+				cmdName = 'cursorWordLeft';
 				break;
 			case Command.WordRight:
-				active = editor.document.positionAt(offset + 1);
-				wordRange = editor.document.getWordRangeAtPosition(active);
-				if (wordRange) {
-					active = wordRange.end;
-				}
+				cmdName = 'cursorWordEndRight';
 				break;
 			case Command.LineTop:
-				textLine = editor.document.lineAt(active);
-				active = new vscode.Position(active.line, textLine.firstNonWhitespaceCharacterIndex);
+				cmdName = 'cursorHome';
 				break;
 			case Command.LineEnd:
-				textLine = editor.document.lineAt(active);
-				active = textLine.range.end;
+				cmdName = 'cursorEnd';
 				break;
-			case Command.LineUp:
-				if (arg.select) {
-					vscode.commands.executeCommand('cursorUpSelect').then(() => resolve(), reject);
-				} else {
-					vscode.commands.executeCommand('cursorUp').then(() => resolve(), reject);
-				}
-				return;
-			case Command.LineDown:
-				if (arg.select) {
-					vscode.commands.executeCommand('cursorDownSelect').then(() => resolve(), reject);
-				} else {
-					vscode.commands.executeCommand('cursorDown').then(() => resolve(), reject);
-				}
-				return;
 		}
 
-		editor.selection = new vscode.Selection(active, isSelect ? anchor : active);
-		resolve();
+		if (arg.select) {
+			cmdName += 'Select;'
+		}
+		vscode.commands.executeCommand(cmdName).then((value) => resolve(), reject);
 	});
 }
 
@@ -188,7 +158,7 @@ export let MacroCommand = (function (){
 	/*
 	vscode.commands.getCommands().then((value) => {
 		value.forEach((item) => {
-			if (/line/.test(item)) {
+			if (/cursor/.test(item)) {
 				console.log(item);
 			}
 		});
@@ -233,6 +203,10 @@ export let MacroCommand = (function (){
 		list.push(cmd);
 	}
 
+	function isEol(document: vscode.TextDocument, offset: number) {
+		return "\n\r".indexOf(document.getText().charAt(offset)) >= 0;
+	}
+
 	function pushMove(event : vscode.TextEditorSelectionChangeEvent) {
 		let selections = event.selections;
 		if (Date.now() - cmdTime > 100 && selections[0] && lastSelection) {
@@ -253,10 +227,10 @@ export let MacroCommand = (function (){
 			}
 
 			let cmd: MacroStore | null = null;
-			if (offset == lastOffset + 1) {
+			if (offset == lastOffset + 1 || (offset == lastOffset + 2 && isEol(document, lastOffset))) {
 				//console.log('cursor right');
 				cmd = new MacroStore(replayMove, Command.CursorRight);
-			} else if (offset == lastOffset - 1) {
+			} else if (offset == lastOffset - 1 || (offset == lastOffset - 2 && isEol(document, offset))) {
 				//console.log('cursor left');
 				cmd = new MacroStore(replayMove, Command.CursorLeft);
 			} else if (offset > lastOffset && wordRange && wordRange.end.isEqual(active)) {
@@ -274,12 +248,6 @@ export let MacroCommand = (function (){
 					//console.log('cursor line end');
 					cmd = new MacroStore(replayMove, Command.LineEnd);
 				}
-			} else if (active.line == lastSelection.active.line + 1) {
-				//console.log('cursor down', active.line, lastSelection.active.line);
-				cmd = new MacroStore(replayMove, Command.LineDown);
-			} else if (active.line == lastSelection.active.line - 1) {
-				//console.log('cursor up', active.line, lastSelection.active.line);
-				cmd = new MacroStore(replayMove, Command.LineUp);
 			}
 			if (cmd) {
 				if (anchor.isEqual(active) == false) {

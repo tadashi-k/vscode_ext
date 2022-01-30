@@ -18,78 +18,90 @@ export let EditCommand = (function(){
 	var completeIndex : number = -1;
 
 	function deleteLine(editor: vscode.TextEditor) {
-		let document = editor.document;
-		let linePos = document.lineAt(editor.selection.active).range.start;
-		let range = new vscode.Range(linePos, linePos.translate(1));
-
-		let line = document.getText(range);
-
-		if (linePos.line === yankLine && yankStartOfLine === true) {
-			yankString += line;
-		} else {
-			yankString = line;
-			yankStartOfLine = true;
-		}
-		yankLine = linePos.line;
-
-		editor.edit((edit) => {
-			edit.delete(range);
-		});
 		MacroCommand.push(deleteLine);
+
+		return new Promise<void>((resolve, reject) => {
+			let document = editor.document;
+			let linePos = document.lineAt(editor.selection.active).range.start;
+			let range = new vscode.Range(linePos, linePos.translate(1));
+
+			let line = document.getText(range);
+
+			if (linePos.line === yankLine && yankStartOfLine === true) {
+				yankString += line;
+			} else {
+				yankString = line;
+				yankStartOfLine = true;
+			}
+			yankLine = linePos.line;
+
+			editor.edit((edit) => {
+				edit.delete(range);
+			}).then(() => resolve());
+		});
 	}
 
 	function deleteEndOfLine(editor : vscode.TextEditor) {
-		let document = editor.document;
-		let pos = editor.selection.active;
-		let lineEnd = document.lineAt(pos).range.end;
-		let range = new vscode.Range(pos, lineEnd);
-
-		yankString = document.getText(range);
-		yankStartOfLine = false;
-		yankLine = -1;
-
-		editor.edit((edit) => {
-			edit.delete(range);
-		});
 		MacroCommand.push(deleteEndOfLine);
+
+		return new Promise<void>((resolve, reject) => {
+			let document = editor.document;
+			let pos = editor.selection.active;
+			let lineEnd = document.lineAt(pos).range.end;
+			let range = new vscode.Range(pos, lineEnd);
+
+			yankString = document.getText(range);
+			yankStartOfLine = false;
+			yankLine = -1;
+
+			editor.edit((edit) => {
+				edit.delete(range);
+			}).then(() => resolve());
+		});
 	}
 
 	function deleteWord(editor : vscode.TextEditor) {
-		let document = editor.document;
-		let pos = editor.selection.active;
-		MoveCommand.nextWord(editor);
-		let next = editor.selection.active;
-		let range = new vscode.Range(pos, next);
-
-		if (yankLine !== pos.line) {
-			yankString = '';
-			yankLine = pos.line;
-		}
-		yankString += document.getText(range);
-		yankStartOfLine = false;
-
-		editor.edit((edit) => {
-			edit.delete(range);
-		});
 		MacroCommand.push(deleteWord);
+
+		return new Promise<void>((resolve, reject) => {
+			let document = editor.document;
+			let pos = editor.selection.active;
+			MoveCommand.nextWord(editor);
+			let next = editor.selection.active;
+			let range = new vscode.Range(pos, next);
+
+			if (yankLine !== pos.line) {
+				yankString = '';
+				yankLine = pos.line;
+			}
+			yankString += document.getText(range);
+			yankStartOfLine = false;
+
+			return editor.edit((edit) => {
+				edit.delete(range);
+			}).then(() => resolve());
+		});
 	}
 
 	function yank(editor : vscode.TextEditor) {
-		let selection = editor.selection;
-		let document = editor.document;
-		var yankPos: vscode.Position;
-		yankLine = -1;
-
-		if (yankStartOfLine) {
-			yankPos = document.lineAt(selection.active).range.start;
-		} else {
-			yankPos = selection.active;
-		}
-
-		editor.edit((edit) => {
-			edit.insert(yankPos, yankString);
-		});
 		MacroCommand.push(yank);
+
+		return new Promise<void>((resolve, reject) => {
+			let selection = editor.selection;
+			let document = editor.document;
+			var yankPos: vscode.Position;
+			yankLine = -1;
+
+			if (yankStartOfLine) {
+				yankPos = document.lineAt(selection.active).range.start;
+			} else {
+				yankPos = selection.active;
+			}
+
+			return editor.edit((edit) => {
+				edit.insert(yankPos, yankString);
+			}).then(() => resolve());
+		});
 	}
 
 	function copyToClipboard(editor: vscode.TextEditor) {
@@ -98,74 +110,87 @@ export let EditCommand = (function(){
 	}
 
 	function copyAndUnselect(editor: vscode.TextEditor) {
-		copyToClipboard(editor).then(() => {
-			let pos = editor.selection.active;
-			editor.selection = new vscode.Selection(pos, pos);
-		});
 		MacroCommand.push(copyAndUnselect);
+
+		return new Promise<void>((resolve, reject) => {
+			copyToClipboard(editor).then(() => {
+				let pos = editor.selection.active;
+				editor.selection = new vscode.Selection(pos, pos);
+				resolve();
+			});
+		});
 	}
 
 	function cut(editor: vscode.TextEditor) {
-		copyToClipboard(editor).then(() => {
-			editor.edit((edit) => {
-				edit.delete(editor.selection);
+		MacroCommand.push(cut);
+
+		return new Promise<void>((resolve, reject) => {
+			copyToClipboard(editor).then(() => {
+				editor.edit((edit) => {
+					edit.delete(editor.selection);
+				}).then(() => resolve());
 			});
 		});
-
-		MacroCommand.push(cut);
 	}
 
 	function paste(editor: vscode.TextEditor) {
-		vscode.env.clipboard.readText().then((value) => {
-			editor.edit((edit) => {
-				edit.delete(editor.selection);
-				edit.insert(editor.selection.active, value);
+		MacroCommand.push(paste);
+
+		return new Promise<void>((resolve, reject) => {
+			vscode.env.clipboard.readText().then((value) => {
+				editor.edit((edit) => {
+					edit.delete(editor.selection);
+					edit.insert(editor.selection.active, value);
+				}).then(() => resolve());
 			});
 		});
-		MacroCommand.push(paste);
 	}
 
 	function wordComplete(editor: vscode.TextEditor) {
 		const SEARCH_RANGE = 1000;
-
 		let document = editor.document;
-		let pos = editor.selection.active;
-		let lineText = document.lineAt(pos).text;
-		let match = /[a-zA-Z0-9_]+$/.exec(lineText.slice(0, pos.character));
-		if (!match) {
-			completeIndex = -1;
-			return;
-		}
-		let refWord = match[0];
-		let startPos = new vscode.Position(pos.line, pos.character - refWord.length);
 
-		if (isRebuild()) {
-			buildList(refWord);
-		} else {
-			completeIndex++;
-		}
-		if (completeIndex >= completeWords.length) {
-			completeIndex = 0;
-		}
-
-		if (completeWords.length > 0) {
-			let endPos: vscode.Position;
-			let endMatch = /^[a-zA-Z0-9_]+/.exec(lineText.slice(pos.character));
-			if (endMatch) {
-				endPos = new vscode.Position(pos.line, pos.character + endMatch[0].length);
-			} else {
-				endPos = pos;
+		return new Promise<void>((resolve, reject) => {
+			let pos = editor.selection.active;
+			let lineText = document.lineAt(pos).text;
+			let match = /[a-zA-Z0-9_]+$/.exec(lineText.slice(0, pos.character));
+			if (!match) {
+				completeIndex = -1;
+				resolve(); // finish normally
+				return;
 			}
-			completePos = startPos;
-			editor.edit((edit: vscode.TextEditorEdit) => {
-				edit.delete(new vscode.Range(startPos, endPos));
-				edit.insert(startPos, completeWords[completeIndex]);
-			});
-		} else {
-			completeIndex = 0;
-		}
+			let refWord = match[0];
+			let startPos = new vscode.Position(pos.line, pos.character - refWord.length);
 
-		function isRebuild(): boolean {
+			if (isRebuild(refWord, startPos)) {
+				buildList(pos, refWord);
+			} else {
+				completeIndex++;
+			}
+			if (completeIndex >= completeWords.length) {
+				completeIndex = 0;
+			}
+
+			if (completeWords.length > 0) {
+				let endPos: vscode.Position;
+				let endMatch = /^[a-zA-Z0-9_]+/.exec(lineText.slice(pos.character));
+				if (endMatch) {
+					endPos = new vscode.Position(pos.line, pos.character + endMatch[0].length);
+				} else {
+					endPos = pos;
+				}
+				completePos = startPos;
+				editor.edit((edit: vscode.TextEditorEdit) => {
+					edit.delete(new vscode.Range(startPos, endPos));
+					edit.insert(startPos, completeWords[completeIndex]);
+				}).then(() => resolve());
+			} else {
+				completeIndex = 0;
+				resolve();
+			}
+		});
+
+		function isRebuild(refWord: string, startPos: vscode.Position): boolean {
 			if (completeIndex < 0) {
 				return true;
 			}
@@ -178,7 +203,7 @@ export let EditCommand = (function(){
 			return false;
 		}
 
-		function buildList(ref: string) {
+		function buildList(pos: vscode.Position, ref: string) {
 			let regexp = new RegExp('[^a-zA-Z0-9_]' + ref + '[a-zA-Z0-9_]+', 'gi');
 			completeWords.length = 0;
 			completeIndex = 0;
@@ -225,7 +250,7 @@ export let EditCommand = (function(){
 
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect, cut, paste, wordComplete]);
+			CommandActivator.registerAsync(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect, cut, paste, wordComplete]);
 		}
 	};
 })();

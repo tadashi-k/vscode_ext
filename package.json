@@ -67,6 +67,26 @@
 				"category": "move"
 			},
 			{
+				"command": "extension.nextLine",
+				"title": "Next line",
+				"category": "move"
+			},
+			{
+				"command": "extension.nextLineSelect",
+				"title": "Next line with selection",
+				"category": "move"
+			},
+			{
+				"command": "extension.prevLine",
+				"title": "Previous line",
+				"category": "move"
+			},
+			{
+				"command": "extension.prevLineSelect",
+				"title": "Previous line with selection",
+				"category": "move"
+			},
+			{
 				"command": "extension.mark",
 				"title": "Mark current position",
 				"category": "move"

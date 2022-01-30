@@ -147,6 +147,26 @@ export let MoveCommand = (function(){
 		MacroCommand.push(prevWord);
 	}
 
+	function nextLine() {
+		MacroCommand.push(nextLine);
+		return vscode.commands.executeCommand('cursorDown');
+	}
+
+	function nextLineSelect() {
+		MacroCommand.push(nextLineSelect);
+		return vscode.commands.executeCommand('cursorDownSelect');
+	}
+
+	function prevLine() {
+		MacroCommand.push(prevLine);
+		return vscode.commands.executeCommand('cursorUp');
+	}
+
+	function prevLineSelect() {
+		MacroCommand.push(prevLineSelect);
+		return vscode.commands.executeCommand('cursorUpSelect');
+	}
+
 	function mark(editor: vscode.TextEditor) {
 		let document = editor.document;
 		let pos = editor.selection.active;
@@ -252,6 +272,7 @@ export let MoveCommand = (function(){
 	return {
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark, gotoMark]);
+			CommandActivator.registerAsync(context, [nextLine, nextLineSelect, prevLine, prevLineSelect]);
 		},
 		nextWord : (editor: vscode.TextEditor) => {
 			disableMacro = true;
