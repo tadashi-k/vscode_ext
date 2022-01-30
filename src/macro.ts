@@ -6,6 +6,7 @@
 
 import * as vscode from 'vscode';
 import { CommandActivator } from './command';
+import { EditCommand } from './edit';
 
 enum Command {
 	Internal,
@@ -114,7 +115,7 @@ function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs):
 						resolve();
 					});
 				} else {
-					editor.edit((edit: vscode.TextEditorEdit) => {
+					EditCommand.edit(editor, (edit) => {
 						edit.insert(active, arg.text);
 					}).then(() => {
 						active = active.translate(0, arg.offset)
@@ -127,7 +128,7 @@ function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs):
 				const offset = editor.document.offsetAt(active) + arg.offset;
 				const start = editor.document.positionAt(offset);
 				const end = editor.document.positionAt(offset + 1);
-				editor.edit((edit: vscode.TextEditorEdit) => {
+				EditCommand.edit(editor, (edit) => {
 					edit.delete(new vscode.Range(start, end));
 				}).then(() => {
 					editor.selection = new vscode.Selection(start, start);
@@ -312,9 +313,15 @@ export let MacroCommand = (function (){
 
 	async function macroReplay(editor: vscode.TextEditor) {
 		//console.log('play', list.length);
+		if (recording) {
+			return;
+		}
+
+		EditCommand.startUndoFusion();
 		for (let i = 0; i < list.length; i++) {
 			await list[i].execute(editor);
 		}
+		EditCommand.stopUndoFution();
 	}
 
 	return {

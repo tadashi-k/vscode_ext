@@ -10,12 +10,24 @@ import { MoveCommand } from './move';
 import { MacroCommand } from './macro';
 
 export let EditCommand = (function(){
-	var yankString: string;
-	var yankLine: number = -1;
-	var yankStartOfLine: boolean = false; // do yank by line if true
-	var completeWords : string[] = [];
-	var completePos : vscode.Position | null = null;
-	var completeIndex : number = -1;
+	let yankString: string;
+	let yankLine: number = -1;
+	let yankStartOfLine: boolean = false; // do yank by line if true
+	let completeWords : string[] = [];
+	let completePos : vscode.Position | null = null;
+	let completeIndex : number = -1;
+	let undoStatus = 0;
+
+	function getEditOptions() {
+		if (undoStatus == 0) {
+			return {undoStopBefore: true, undoStopAfter: true};
+		} else if (undoStatus == 1) {
+			undoStatus = 2;
+			return {undoStopBefore: true, undoStopAfter: false};
+		} else {
+			return {undoStopBefore: false, undoStopAfter: false};
+		}
+	}
 
 	function deleteLine(editor: vscode.TextEditor) {
 		MacroCommand.push(deleteLine);
@@ -37,7 +49,7 @@ export let EditCommand = (function(){
 
 			editor.edit((edit) => {
 				edit.delete(range);
-			}).then(() => resolve());
+			}, getEditOptions()).then(() => resolve());
 		});
 	}
 
@@ -56,7 +68,7 @@ export let EditCommand = (function(){
 
 			editor.edit((edit) => {
 				edit.delete(range);
-			}).then(() => resolve());
+			}, getEditOptions()).then(() => resolve());
 		});
 	}
 
@@ -79,7 +91,7 @@ export let EditCommand = (function(){
 
 			return editor.edit((edit) => {
 				edit.delete(range);
-			}).then(() => resolve());
+			}, getEditOptions()).then(() => resolve());
 		});
 	}
 
@@ -100,7 +112,7 @@ export let EditCommand = (function(){
 
 			return editor.edit((edit) => {
 				edit.insert(yankPos, yankString);
-			}).then(() => resolve());
+			}, getEditOptions()).then(() => resolve());
 		});
 	}
 
@@ -128,7 +140,7 @@ export let EditCommand = (function(){
 			copyToClipboard(editor).then(() => {
 				editor.edit((edit) => {
 					edit.delete(editor.selection);
-				}).then(() => resolve());
+				}, getEditOptions()).then(() => resolve());
 			});
 		});
 	}
@@ -141,7 +153,7 @@ export let EditCommand = (function(){
 				editor.edit((edit) => {
 					edit.delete(editor.selection);
 					edit.insert(editor.selection.active, value);
-				}).then(() => resolve());
+				}, getEditOptions()).then(() => resolve());
 			});
 		});
 	}
@@ -251,6 +263,15 @@ export let EditCommand = (function(){
 	return {
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.registerAsync(context, [deleteLine, deleteEndOfLine, deleteWord, yank, copyAndUnselect, cut, paste, wordComplete]);
+		},
+		startUndoFusion: () => {
+			undoStatus = 1;
+		},
+		stopUndoFution: () => {
+			undoStatus = 0;
+		},
+		edit : (editor: vscode.TextEditor, callback :(edit: vscode.TextEditorEdit) => void) => {
+			return editor.edit(callback, getEditOptions());
 		}
 	};
 })();
