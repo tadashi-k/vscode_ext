@@ -2,7 +2,8 @@
 
 import * as vscode from 'vscode';
 
-export let CommandActivator = (function(){
+export let CommandActivator = (function () {
+	let asyncSet = new Set<string>();
 
 	function registerAsync(context: vscode.ExtensionContext, entries: ((editor: vscode.TextEditor) => Thenable<any>)[]) {
 		entries.forEach(entry => {
@@ -17,6 +18,7 @@ export let CommandActivator = (function(){
 				}
 			});
 			context.subscriptions.push(disposable);
+			asyncSet.add(entry.name);
 		});
 	}
 
@@ -37,8 +39,13 @@ export let CommandActivator = (function(){
 		});
 	}
 
+	function isAsync(funcName: string) {
+		return asyncSet.has(funcName);
+	}
+
 	return {
 		register: register,
-		registerAsync: registerAsync
+		registerAsync: registerAsync,
+		isAsync: isAsync
 	};
 })();

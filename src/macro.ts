@@ -23,13 +23,17 @@ class CommandArgs {
 	select: boolean = false;
 	text: string = '';
 	offset: number = 0;
-	internal?: (editor: vscode.TextEditor) => void;
+	internal?: InternalFunction;
+	async: boolean = false;
 }
 
 // temporary store of number of indent characters when execute lineBreakInsert
 let indentDepth : number = 0;
 
 type ReplayFunction = (editor: vscode.TextEditor, command: Command, arg: CommandArgs) => Thenable<void>;
+type InternalFunctionVoid = (editor: vscode.TextEditor) => void;
+type InternalFunctionAsync = (editor: vscode.TextEditor) => Thenable<unknown>;
+type InternalFunction = InternalFunctionVoid | InternalFunctionAsync;
 
 class MacroStore {
 	func: ReplayFunction;
@@ -54,8 +58,9 @@ class MacroStore {
 		this.arg.offset = offset;
 	}
 
-	setFunction(internal: (editor: vscode.TextEditor) => void) {
+	setFunction(internal: InternalFunction, async: boolean) {
 		this.arg.internal = internal;
+		this.arg.async = async;
 	}
 
 	execute(editor: vscode.TextEditor) {
@@ -137,14 +142,24 @@ function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs):
 }
 
 function replayInternalCommand(editor: vscode.TextEditor, mode: Command, arg: CommandArgs): Thenable<void> {
-	return new Promise<void>((resolve, reject) => {
+	if (arg.async) {
 		if (arg.internal) {
-			arg.internal(editor);
-			resolve();
+			return arg.internal(editor) as Thenable<void>;
 		} else {
-			reject('execute undefined function');
+			return new Promise<void>((resolve, reject) => {
+				reject('execute undefined function');
+			});
 		}
-	});
+	} else {
+		return new Promise<void>((resolve, reject) => {
+			if (arg.internal) {
+				arg.internal(editor);
+				resolve();
+			} else {
+				reject('execute undefined function');
+			}
+		});
+	}
 }
 
 export let MacroCommand = (function (){
@@ -196,10 +211,10 @@ export let MacroCommand = (function (){
 	let item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 	item.text = 'Macro';
 
-	function pushCommand(func: (editor: vscode.TextEditor) => void) {
+	function pushCommand(func: InternalFunction, async: boolean) {
 		cmdTime = Date.now();
 		const cmd = new MacroStore(replayInternalCommand);
-		cmd.setFunction(func);
+		cmd.setFunction(func, async);
 		list.push(cmd);
 	}
 
@@ -306,11 +321,11 @@ export let MacroCommand = (function (){
 		activate: (context: vscode.ExtensionContext) => {
 			CommandActivator.register(context, [macroRecord, macroReplay]);
 		},
-		push: (func: (editor: vscode.TextEditor) => void) => {
+		push: (func: InternalFunctionVoid) => {
 			if (recording) {
-				pushCommand(func);
+				pushCommand(func, CommandActivator.isAsync(func.name));
 			}
-		}
+		},
 	};
 
 })();
