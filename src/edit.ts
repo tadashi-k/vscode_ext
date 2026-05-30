@@ -5,7 +5,7 @@
  */
 
 import * as vscode from 'vscode';
-import { CommandActivator } from './command';
+import { CommandActivator, EDIT_REJECTED_ERROR } from './command';
 import { MoveCommand } from './move';
 import { MacroCommand } from './macro';
 
@@ -30,79 +30,98 @@ export let EditCommand = (function(){
 	}
 
 	function deleteLine(editor: vscode.TextEditor) {
-		MacroCommand.push(deleteLine);
-
 		return new Promise<void>((resolve, reject) => {
 			let document = editor.document;
 			let linePos = document.lineAt(editor.selection.active).range.start;
 			let range = new vscode.Range(linePos, linePos.translate(1));
-
 			let line = document.getText(range);
 
+			let newYankString: string;
 			if (linePos.line === yankLine && yankStartOfLine === true) {
-				yankString += line;
+				newYankString = yankString + line;
 			} else {
-				yankString = line;
-				yankStartOfLine = true;
+				newYankString = line;
 			}
-			yankLine = linePos.line;
 
 			editor.edit((edit) => {
 				edit.delete(range);
-			}, getEditOptions()).then(() => resolve());
+			}, getEditOptions()).then((success) => {
+				if (success) {
+					yankString = newYankString;
+					yankStartOfLine = true;
+					yankLine = linePos.line;
+					MacroCommand.push(deleteLine);
+					resolve();
+				} else {
+					reject(EDIT_REJECTED_ERROR);
+				}
+			});
 		});
 	}
 
 	function deleteEndOfLine(editor : vscode.TextEditor) {
-		MacroCommand.push(deleteEndOfLine);
-
 		return new Promise<void>((resolve, reject) => {
 			let document = editor.document;
 			let pos = editor.selection.active;
 			let lineEnd = document.lineAt(pos).range.end;
 			let range = new vscode.Range(pos, lineEnd);
-
-			yankString = document.getText(range);
-			yankStartOfLine = false;
-			yankLine = -1;
+			let text = document.getText(range);
 
 			editor.edit((edit) => {
 				edit.delete(range);
-			}, getEditOptions()).then(() => resolve());
+			}, getEditOptions()).then((success) => {
+				if (success) {
+					yankString = text;
+					yankStartOfLine = false;
+					yankLine = -1;
+					MacroCommand.push(deleteEndOfLine);
+					resolve();
+				} else {
+					reject(EDIT_REJECTED_ERROR);
+				}
+			});
 		});
 	}
 
 	function deleteWord(editor : vscode.TextEditor) {
-		MacroCommand.push(deleteWord);
-
 		return new Promise<void>((resolve, reject) => {
 			let document = editor.document;
 			let pos = editor.selection.active;
 			MoveCommand.nextWord(editor);
 			let next = editor.selection.active;
 			let range = new vscode.Range(pos, next);
+			let text = document.getText(range);
 
+			let newYankString: string;
 			if (yankLine !== pos.line) {
-				yankString = '';
-				yankLine = pos.line;
+				newYankString = text;
+			} else {
+				newYankString = yankString + text;
 			}
-			yankString += document.getText(range);
-			yankStartOfLine = false;
 
-			return editor.edit((edit) => {
+			editor.edit((edit) => {
 				edit.delete(range);
-			}, getEditOptions()).then(() => resolve());
+			}, getEditOptions()).then((success) => {
+				if (success) {
+					yankString = newYankString;
+					yankStartOfLine = false;
+					yankLine = pos.line;
+					MacroCommand.push(deleteWord);
+					resolve();
+				} else {
+					// Restore cursor to original position so retry starts correctly
+					editor.selection = new vscode.Selection(pos, pos);
+					reject(EDIT_REJECTED_ERROR);
+				}
+			});
 		});
 	}
 
 	function yank(editor : vscode.TextEditor) {
-		MacroCommand.push(yank);
-
 		return new Promise<void>((resolve, reject) => {
 			let selection = editor.selection;
 			let document = editor.document;
 			var yankPos: vscode.Position;
-			yankLine = -1;
 
 			if (yankStartOfLine) {
 				yankPos = document.lineAt(selection.active).range.start;
@@ -110,9 +129,17 @@ export let EditCommand = (function(){
 				yankPos = selection.active;
 			}
 
-			return editor.edit((edit) => {
+			editor.edit((edit) => {
 				edit.insert(yankPos, yankString);
-			}, getEditOptions()).then(() => resolve());
+			}, getEditOptions()).then((success) => {
+				if (success) {
+					yankLine = -1;
+					MacroCommand.push(yank);
+					resolve();
+				} else {
+					reject(EDIT_REJECTED_ERROR);
+				}
+			});
 		});
 	}
 
@@ -122,38 +149,47 @@ export let EditCommand = (function(){
 	}
 
 	function copyAndUnselect(editor: vscode.TextEditor) {
-		MacroCommand.push(copyAndUnselect);
-
 		return new Promise<void>((resolve, reject) => {
 			copyToClipboard(editor).then(() => {
 				let pos = editor.selection.active;
 				editor.selection = new vscode.Selection(pos, pos);
+				MacroCommand.push(copyAndUnselect);
 				resolve();
 			});
 		});
 	}
 
 	function cut(editor: vscode.TextEditor) {
-		MacroCommand.push(cut);
-
 		return new Promise<void>((resolve, reject) => {
 			copyToClipboard(editor).then(() => {
 				editor.edit((edit) => {
 					edit.delete(editor.selection);
-				}, getEditOptions()).then(() => resolve());
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						MacroCommand.push(cut);
+						resolve();
+					} else {
+						reject(EDIT_REJECTED_ERROR);
+					}
+				});
 			});
 		});
 	}
 
 	function paste(editor: vscode.TextEditor) {
-		MacroCommand.push(paste);
-
 		return new Promise<void>((resolve, reject) => {
 			vscode.env.clipboard.readText().then((value) => {
 				editor.edit((edit) => {
 					edit.delete(editor.selection);
 					edit.insert(editor.selection.active, value);
-				}, getEditOptions()).then(() => resolve());
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						MacroCommand.push(paste);
+						resolve();
+					} else {
+						reject(EDIT_REJECTED_ERROR);
+					}
+				});
 			});
 		});
 	}
@@ -195,7 +231,13 @@ export let EditCommand = (function(){
 				editor.edit((edit: vscode.TextEditorEdit) => {
 					edit.delete(new vscode.Range(startPos, endPos));
 					edit.insert(startPos, completeWords[completeIndex]);
-				}).then(() => resolve());
+					}).then((success) => {
+						if (success) {
+							resolve();
+						} else {
+							reject(EDIT_REJECTED_ERROR);
+						}
+					});
 			} else {
 				completeIndex = 0;
 				resolve();
