@@ -12,6 +12,8 @@ enum Command {
 	Internal,
 	CursorLeft,
 	CursorRight,
+	CursorUp,
+	CursorDown,
 	WordLeft,
 	WordRight,
 	LineTop,
@@ -80,6 +82,12 @@ function replayMove(editor: vscode.TextEditor, mode : Command, arg: CommandArgs)
 				break;
 			case Command.CursorRight:
 				cmdName = 'cursorRight';
+				break;
+			case Command.CursorUp:
+				cmdName = 'cursorUp';
+				break;
+			case Command.CursorDown:
+				cmdName = 'cursorDown';
 				break;
 			case Command.WordLeft:
 				cmdName = 'cursorWordLeft';
@@ -255,6 +263,12 @@ export let MacroCommand = (function (){
 			} else if (offset < lastOffset && wordRange && wordRange.start.isEqual(active)) {
 				//console.log("word left");
 				cmd = new MacroStore(replayMove, Command.WordLeft);
+			} else if (active.line == lastSelection.active.line - 1) {
+				//console.log('cursor up');
+				cmd = new MacroStore(replayMove, Command.CursorUp);
+			} else if (active.line == lastSelection.active.line + 1) {
+				//console.log('cursor down');
+				cmd = new MacroStore(replayMove, Command.CursorDown);
 			} else if (active.line == lastSelection.active.line) {
 				let textLine = document.lineAt(active);
 				if (active.character == textLine.firstNonWhitespaceCharacterIndex) {
