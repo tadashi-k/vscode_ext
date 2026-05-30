@@ -1,57 +1,41 @@
-# editext README
+# editext
 
-This is the README for your extension "Edit Extention". After writing up a brief description, we recommend including the following sections.
+A VS Code extension providing advanced text editing commands inspired by Emacs keybindings.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Delete line**: Remove entire line (Ctrl+Y)
+- **Delete to end of line**: Delete from cursor to end of line (Ctrl+K)
+- **Delete word**: Remove current word (Ctrl+T)
+- **Yank**: Copy and save line (Ctrl+L)
+- **Word complete**: Auto-complete current word (Ctrl+N)
+- **Navigation**: Move by words and lines with selection support
+- **Marks**: Set and jump to marks in your code (Esc+Space, Esc+P)
+- **Macros**: Record and replay editing sequences (Esc+[, Ctrl+[)
 
-For example if there is an image subfolder under your extension project workspace:
+## Commands
 
-\!\[feature X\]\(images/feature-x.png\)
+All commands are accessible via the Command Palette (Ctrl+Shift+P) with the "edit" or "move" or "macro" prefix.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Keybindings
 
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
+| Command | Windows/Linux | macOS |
+|---------|---|---|
+| Delete line | Ctrl+Y | Ctrl+Y |
+| Delete to end of line | Ctrl+K | Ctrl+K |
+| Delete word | Ctrl+T | Ctrl+T |
+| Yank | Ctrl+L | Ctrl+L |
+| Word complete | Ctrl+N | Ctrl+N |
+| Next word | Ctrl+F | Ctrl+F |
+| Previous word | Ctrl+A | Ctrl+A |
+| Set mark | Esc+Space | Esc+Space |
+| Goto mark | Esc+P | Esc+P |
+| Swap mark | Ctrl+P | Ctrl+P |
+| Record macro | Esc+[ | Esc+[ |
+| Replay macro | Ctrl+[ | Ctrl+[ |
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
-
-Initial release of ...
-
------------------------------------------------------------------------------------------------------------
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release with basic text editing commands.

@@ -1,9 +1,13 @@
 {
 	"name": "editext",
 	"displayName": "Edit Extension",
-	"description": "",
+	"description": "Advanced text editing commands inspired by Emacs keybindings",
 	"version": "0.0.1",
 	"publisher": "tadashi",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/tadashi-k/vscode_ext"
+	},
 	"engines": {
 		"vscode": "^1.63.0"
 	},
@@ -11,7 +15,25 @@
 		"Other"
 	],
 	"activationEvents": [
-		"*"
+		"onCommand:extension.deleteLine",
+		"onCommand:extension.deleteEndOfLine",
+		"onCommand:extension.deleteWord",
+		"onCommand:extension.yank",
+		"onCommand:extension.copyAndUnselect",
+		"onCommand:extension.cut",
+		"onCommand:extension.paste",
+		"onCommand:extension.wordComplete",
+		"onCommand:extension.nextWord",
+		"onCommand:extension.prevWord",
+		"onCommand:extension.nextLine",
+		"onCommand:extension.nextLineSelect",
+		"onCommand:extension.prevLine",
+		"onCommand:extension.prevLineSelect",
+		"onCommand:extension.mark",
+		"onCommand:extension.swapMark",
+		"onCommand:extension.gotoMark",
+		"onCommand:extension.macroRecord",
+		"onCommand:extension.macroReplay"
 	],
 	"main": "./out/extension",
 	"contributes": {
@@ -173,7 +195,8 @@
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src --ext ts",
 		"build": "rm -fr out && tsc",
-		"setup": "npm install --production"
+		"setup": "npm install --production",
+		"pack": "vsce package"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
@@ -183,9 +206,10 @@
 		"@typescript-eslint/eslint-plugin": "^5.1.0",
 		"@typescript-eslint/parser": "^5.1.0",
 		"@vscode/test-electron": "^2.5.2",
+		"@vscode/vsce": "^3.9.1",
 		"eslint": "^8.1.0",
 		"glob": "^7.1.7",
 		"mocha": "^11.3.0",
-		"typescript": "^4.4.4"
+		"typescript": "^4.9.5"
 	}
 }
