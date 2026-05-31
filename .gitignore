@@ -3,3 +3,6 @@
 /.vscode-test/
 /*.zip
 /*.vsix
+/test/**/*.js.map
+/test/**/*.test.js
+/test/mock/**/*.js

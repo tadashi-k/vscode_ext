@@ -1,0 +1,16 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "baseUrl": ".",
+        "noUnusedLocals": false,
+        "types": ["node", "mocha"],
+        "paths": {
+            "vscode": ["test/mock/vscode"]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "test/**/*"
+    ]
+}

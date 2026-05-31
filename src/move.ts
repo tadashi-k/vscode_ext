@@ -278,6 +278,11 @@ export let MoveCommand = (function(){
 			disableMacro = true;
 			nextWord(editor);
 			disableMacro = false;
+		},
+		prevWord : (editor: vscode.TextEditor) => {
+			disableMacro = true;
+			prevWord(editor);
+			disableMacro = false;
 		}
 	};
 })();
