@@ -103,7 +103,7 @@ export let MoveCommand = (function(){
 
 		pos = new vscode.Position(pos.line, cursor);
 		editor.selection = new vscode.Selection(pos, pos);
-		if (disableMacro == false) {
+		if (disableMacro === false) {
 			MacroCommand.push(nextWord);
 		}
 	}
@@ -183,7 +183,7 @@ export let MoveCommand = (function(){
 	}
 
 	function openDocumentByMark(editor: vscode.TextEditor, mark: Mark) {
-		if (editor.document.fileName != mark.document.fileName) {
+		if (editor.document.fileName !== mark.document.fileName) {
 			vscode.workspace.openTextDocument(mark.document.fileName).then(
 				(document) => vscode.window.showTextDocument(document).then(
 					(editor) => moveTo(editor)
@@ -215,7 +215,7 @@ export let MoveCommand = (function(){
 		// console.log('change', event.document.fileName);
 		event.contentChanges.forEach((change) => {
 			markList.forEach((mark) => {
-				if (mark.document.fileName == event.document.fileName) {
+				if (mark.document.fileName === event.document.fileName) {
 					if (mark.offset > change.rangeOffset) {
 						if (mark.offset < change.rangeOffset + change.rangeLength) {
 							mark.offset = change.rangeOffset;
@@ -229,7 +229,7 @@ export let MoveCommand = (function(){
 	});
 
 	function gotoMark(editor: vscode.TextEditor) {
-		if (markList.length == 0) {
+		if (markList.length === 0) {
 			return;
 		}
 
@@ -254,7 +254,7 @@ export let MoveCommand = (function(){
 					}
 				}
 			}
-		)
+		);
 	}
 
 	return {

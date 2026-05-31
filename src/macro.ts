@@ -104,7 +104,7 @@ function replayMove(editor: vscode.TextEditor, mode : Command, arg: CommandArgs)
 		}
 
 		if (arg.select) {
-			cmdName += 'Select;'
+			cmdName += 'Select';
 		}
 		vscode.commands.executeCommand(cmdName).then((value) => resolve(), reject);
 	});
@@ -126,7 +126,7 @@ function replayEdit(editor: vscode.TextEditor, mode: Command, arg: CommandArgs):
 					EditCommand.edit(editor, (edit) => {
 						edit.insert(active, arg.text);
 					}).then(() => {
-						active = active.translate(0, arg.offset)
+						active = active.translate(0, arg.offset);
 						editor.selection = new vscode.Selection(active, active);
 						resolve();
 					}, reject);
@@ -202,7 +202,7 @@ export let MacroCommand = (function (){
 		}
 		if (event.selections[0]) {
 			lastSelection = event.selections[0];
-			lastOffset = event.textEditor.document.offsetAt(lastSelection.active)
+			lastOffset = event.textEditor.document.offsetAt(lastSelection.active);
 		} else {
 			lastSelection = null;
 		}
@@ -244,7 +244,7 @@ export let MacroCommand = (function (){
 				if (active.line === lastSelection.active.line) {
 					// Same-line post-edit cursor adjustment: absorb it and record the offset delta.
 					const delta = offset - lastOffset;
-					if (delta != 0 && list.length > 0) {
+					if (delta !== 0 && list.length > 0) {
 						const last = list[list.length - 1];
 						last.setOffset(delta);
 					}
@@ -258,10 +258,10 @@ export let MacroCommand = (function (){
 			}
 
 			let cmd: MacroStore | null = null;
-			if (offset == lastOffset + 1 || (offset == lastOffset + 2 && isEol(document, lastOffset))) {
+			if (offset === lastOffset + 1 || (offset === lastOffset + 2 && isEol(document, lastOffset))) {
 				//console.log('cursor right');
 				cmd = new MacroStore(replayMove, Command.CursorRight);
-			} else if (offset == lastOffset - 1 || (offset == lastOffset - 2 && isEol(document, offset))) {
+			} else if (offset === lastOffset - 1 || (offset === lastOffset - 2 && isEol(document, offset))) {
 				//console.log('cursor left');
 				cmd = new MacroStore(replayMove, Command.CursorLeft);
 			} else if (offset > lastOffset && wordRange && wordRange.end.isEqual(active)) {
@@ -270,15 +270,15 @@ export let MacroCommand = (function (){
 			} else if (offset < lastOffset && wordRange && wordRange.start.isEqual(active)) {
 				//console.log("word left");
 				cmd = new MacroStore(replayMove, Command.WordLeft);
-			} else if (active.line == lastSelection.active.line - 1) {
+			} else if (active.line === lastSelection.active.line - 1) {
 				//console.log('cursor up');
 				cmd = new MacroStore(replayMove, Command.CursorUp);
-			} else if (active.line == lastSelection.active.line + 1) {
+			} else if (active.line === lastSelection.active.line + 1) {
 				//console.log('cursor down');
 				cmd = new MacroStore(replayMove, Command.CursorDown);
-			} else if (active.line == lastSelection.active.line) {
+			} else if (active.line === lastSelection.active.line) {
 				let textLine = document.lineAt(active);
-				if (active.character == textLine.firstNonWhitespaceCharacterIndex) {
+				if (active.character === textLine.firstNonWhitespaceCharacterIndex) {
 					//console.log('cursor line top');
 					cmd = new MacroStore(replayMove, Command.LineTop);
 				} else if (active.isEqual(textLine.range.end)) {
@@ -287,7 +287,7 @@ export let MacroCommand = (function (){
 				}
 			}
 			if (cmd) {
-				if (anchor.isEqual(active) == false) {
+				if (anchor.isEqual(active) === false) {
 					cmd.withSelect();
 				}
 				list.push(cmd);
@@ -299,13 +299,13 @@ export let MacroCommand = (function (){
 		let changes = event.contentChanges;
 		if (Date.now() - cmdTime > 100 && changes[0]) {
 			const change = changes[0];
-			if (change.text != '') {
+			if (change.text !== '') {
 				//console.log('insert', change.rangeOffset, change.text);
 				const cmd = new MacroStore(replayEdit, Command.Insert);
 				cmd.setText(change.text);
 				list.push(cmd);
 				doEdit = true;
-			} else if (change.rangeLength > 0 && change.text == '') {
+			} else if (change.rangeLength > 0 && change.text === '') {
 				//console.log('delete', change.rangeOffset, change.rangeLength);
 				list.push(new MacroStore(replayEdit, Command.Delete));
 				doEdit = true;

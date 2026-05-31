@@ -19,9 +19,9 @@ export let EditCommand = (function(){
 	let undoStatus = 0;
 
 	function getEditOptions() {
-		if (undoStatus == 0) {
+		if (undoStatus === 0) {
 			return {undoStopBefore: true, undoStopAfter: true};
-		} else if (undoStatus == 1) {
+		} else if (undoStatus === 1) {
 			undoStatus = 2;
 			return {undoStopBefore: true, undoStopAfter: false};
 		} else {
