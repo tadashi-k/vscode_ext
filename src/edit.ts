@@ -43,14 +43,15 @@ export let EditCommand = (function(){
 				newYankString = line;
 			}
 
+			MacroCommand.lock();
 			editor.edit((edit) => {
-				edit.delete(range);
-			}, getEditOptions()).then((success) => {
-				if (success) {
-					yankString = newYankString;
-					yankStartOfLine = true;
-					yankLine = linePos.line;
-					MacroCommand.push(deleteLine);
+					edit.delete(range);
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						yankString = newYankString;
+						yankStartOfLine = true;
+						yankLine = linePos.line;
+						MacroCommand.push(deleteLine);
 					resolve();
 				} else {
 					reject(EDIT_REJECTED_ERROR);
@@ -67,14 +68,15 @@ export let EditCommand = (function(){
 			let range = new vscode.Range(pos, lineEnd);
 			let text = document.getText(range);
 
+			MacroCommand.lock();
 			editor.edit((edit) => {
-				edit.delete(range);
-			}, getEditOptions()).then((success) => {
-				if (success) {
-					yankString = text;
-					yankStartOfLine = false;
-					yankLine = -1;
-					MacroCommand.push(deleteEndOfLine);
+					edit.delete(range);
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						yankString = text;
+						yankStartOfLine = false;
+						yankLine = -1;
+						MacroCommand.push(deleteEndOfLine);
 					resolve();
 				} else {
 					reject(EDIT_REJECTED_ERROR);
@@ -99,14 +101,15 @@ export let EditCommand = (function(){
 				newYankString = yankString + text;
 			}
 
+			MacroCommand.lock();
 			editor.edit((edit) => {
-				edit.delete(range);
-			}, getEditOptions()).then((success) => {
-				if (success) {
-					yankString = newYankString;
-					yankStartOfLine = false;
-					yankLine = pos.line;
-					MacroCommand.push(deleteWord);
+					edit.delete(range);
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						yankString = newYankString;
+						yankStartOfLine = false;
+						yankLine = pos.line;
+						MacroCommand.push(deleteWord);
 					resolve();
 				} else {
 					// Restore cursor to original position so retry starts correctly
@@ -129,12 +132,13 @@ export let EditCommand = (function(){
 				yankPos = selection.active;
 			}
 
+			MacroCommand.lock();
 			editor.edit((edit) => {
-				edit.insert(yankPos, yankString);
-			}, getEditOptions()).then((success) => {
-				if (success) {
-					yankLine = -1;
-					MacroCommand.push(yank);
+					edit.insert(yankPos, yankString);
+				}, getEditOptions()).then((success) => {
+					if (success) {
+						yankLine = -1;
+						MacroCommand.push(yank);
 					resolve();
 				} else {
 					reject(EDIT_REJECTED_ERROR);
@@ -151,6 +155,7 @@ export let EditCommand = (function(){
 	function copyAndUnselect(editor: vscode.TextEditor) {
 		return new Promise<void>((resolve, reject) => {
 			copyToClipboard(editor).then(() => {
+				MacroCommand.lock();
 				let pos = editor.selection.active;
 				editor.selection = new vscode.Selection(pos, pos);
 				MacroCommand.push(copyAndUnselect);
@@ -162,11 +167,12 @@ export let EditCommand = (function(){
 	function cut(editor: vscode.TextEditor) {
 		return new Promise<void>((resolve, reject) => {
 			copyToClipboard(editor).then(() => {
+				MacroCommand.lock();
 				editor.edit((edit) => {
-					edit.delete(editor.selection);
-				}, getEditOptions()).then((success) => {
-					if (success) {
-						MacroCommand.push(cut);
+						edit.delete(editor.selection);
+					}, getEditOptions()).then((success) => {
+						if (success) {
+							MacroCommand.push(cut);
 						resolve();
 					} else {
 						reject(EDIT_REJECTED_ERROR);
@@ -179,6 +185,7 @@ export let EditCommand = (function(){
 	function paste(editor: vscode.TextEditor) {
 		return new Promise<void>((resolve, reject) => {
 			vscode.env.clipboard.readText().then((value) => {
+				MacroCommand.lock();
 				editor.edit((edit) => {
 					edit.delete(editor.selection);
 					edit.insert(editor.selection.active, value);

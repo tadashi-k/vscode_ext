@@ -3,6 +3,7 @@
 import * as assert from 'assert';
 import { MockTextDocument, MockTextEditor, Position, Selection, mockHelpers } from './mock/vscode';
 import { MacroCommand } from '../src/macro';
+import { EditCommand } from '../src/edit';
 import * as vscodeModule from './mock/vscode';
 
 // ---- Command registration capture ----
@@ -23,6 +24,7 @@ const m_mockContext = {
 };
 
 MacroCommand.activate(m_mockContext as any);
+EditCommand.activate(m_mockContext as any);
 
 // ---- Test state ----
 
@@ -156,6 +158,44 @@ describe('MacroCommand: recording document edits', () => {
 		const replayEditor = makeEditor('clean', 0, 0);
 		await replay(replayEditor);
 		assert.strictEqual(replayEditor.document.getText(), 'clean');
+	});
+
+	it('records forward-delete then cursor-down when no selection event fires after delete', async () => {
+		// Reproduces bug: forward Delete leaves doEdit=true because VS Code does not fire
+		// onDidChangeTextEditorSelection when the cursor position doesn't change.
+		// The subsequent CursorDown event was swallowed by the doEdit branch instead of
+		// being recorded as a cursor movement.
+		const editor = makeEditor('hello\nworld', 0, 0);
+
+		// Initialize lastSelection/lastOffset BEFORE recording so this event is not recorded
+		// as a spurious cursor movement (the handler updates state outside the recording guard).
+		fireSelectionEvent(editor, new Position(0, 0));
+
+		await startRecording(editor);
+
+		// Forward delete at offset 0 (Delete key): cursor does NOT move (no selection event follows)
+		fireDocChangeEvent('', 0, 1);
+		// User presses CursorDown — selection event fires without a preceding post-delete event
+		fireSelectionEvent(editor, new Position(1, 0));
+
+		await stopRecording(editor);
+
+		const m_executedCmds: string[] = [];
+		const m_origExec = vscodeModule.commands.executeCommand;
+		(vscodeModule.commands as any).executeCommand = (cmd: string) => {
+			m_executedCmds.push(cmd);
+			return Promise.resolve();
+		};
+
+		const replayEditor = makeEditor('hello\nworld', 0, 0);
+		await replay(replayEditor);
+		// Drain microtasks so async replay steps (Delete then CursorDown) all complete
+		await new Promise<void>(r => setImmediate(r));
+
+		(vscodeModule.commands as any).executeCommand = m_origExec;
+
+		assert.strictEqual(replayEditor.document.getText(), 'ello\nworld', 'forward-delete should be replayed');
+		assert.ok(m_executedCmds.includes('cursorDown'), `Expected cursorDown in [${m_executedCmds.join(', ')}]`);
 	});
 });
 
@@ -365,6 +405,74 @@ describe('MacroCommand: recording cursor movements', () => {
 
 		// replayMove appends 'Select;' when withSelect() was called
 		assert.ok(m_executedCmd.includes('Select'), `Expected 'Select' in '${m_executedCmd}'`);
+	});
+});
+
+// ============================================================
+// Internal edit command recording (push()-based)
+// These tests must run AFTER event-only tests because MacroCommand.push()
+// sets cmdTime = Date.now(), which can suppress events in tests that follow
+// within 100 ms.  Placing them here keeps the event-only sections above
+// unaffected while still validating push()-based recording.
+// ============================================================
+
+describe('MacroCommand: recording internal edit commands', () => {
+	it('replays deleteWord by re-executing the internal function', async () => {
+		const editor = makeEditor('hello world', 0, 0);
+
+		await startRecording(editor);
+		await callCommand('deleteWord', editor);
+		await stopRecording(editor);
+
+		const replayEditor = makeEditor('hello world', 0, 0);
+		await replay(replayEditor);
+		assert.strictEqual(replayEditor.document.getText(), 'world');
+	});
+
+	it('does not record spurious Delete when VS Code fires events during editor.edit', async () => {
+		const editor = makeEditor('hello world', 0, 0);
+
+		// Simulate real VS Code: setting editor.selection synchronously fires
+		// onDidChangeTextEditorSelection (allowing nextWord to update lastOffset).
+		let m_selValue = editor.selection;
+		Object.defineProperty(editor, 'selection', {
+			get: () => m_selValue,
+			set: (sel: Selection) => {
+				m_selValue = sel;
+				const evt = { selections: [sel], textEditor: editor };
+				m_eventHandlers.onDidChangeTextEditorSelection.forEach(h => h(evt));
+			},
+			configurable: true,
+		});
+
+		// Simulate real VS Code: editor.edit fires onDidChangeTextDocument and a
+		// post-edit onDidChangeTextEditorSelection synchronously before the Promise
+		// resolves — both happen BEFORE MacroCommand.push(deleteWord) is called.
+		const origEdit = (editor as any).edit.bind(editor);
+		(editor as any).edit = (callback: any, options: any) => {
+			const p = origEdit(callback, options);
+			// onDidChangeTextDocument fires synchronously during edit application
+			fireDocChangeEvent('', 0, 6);  // 'hello ' (6 chars) deleted at offset 0
+			// Post-edit: cursor returns to (0,0)
+			fireSelectionEvent(editor, new Position(0, 0));
+			return p;
+		};
+
+		await startRecording(editor);
+		await callCommand('deleteWord', editor);
+		await stopRecording(editor);
+
+		// Restore patches
+		delete (editor as any).edit;
+		Object.defineProperty(editor, 'selection', { value: m_selValue, writable: true, configurable: true });
+
+		const replayEditor = makeEditor('hello world', 0, 0);
+		await replay(replayEditor);
+		assert.strictEqual(
+			replayEditor.document.getText(),
+			'world',
+			`Expected 'world' but got '${replayEditor.document.getText()}'`
+		);
 	});
 });
 

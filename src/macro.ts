@@ -9,17 +9,17 @@ import { CommandActivator } from './command';
 import { EditCommand } from './edit';
 
 enum Command {
-	Internal,
-	CursorLeft,
-	CursorRight,
-	CursorUp,
-	CursorDown,
-	WordLeft,
-	WordRight,
-	LineTop,
-	LineEnd,
-	Insert,
-	Delete
+	Internal = 'Internal',
+	CursorLeft = 'CursorLeft',
+	CursorRight = 'CursorRight',
+	CursorUp = 'CursorUp',
+	CursorDown = 'CursorDown',
+	WordLeft = 'WordLeft',
+	WordRight = 'WordRight',
+	LineTop = 'LineTop',
+	LineEnd = 'LineEnd',
+	Insert = 'Insert',
+	Delete = 'Delete',
 }
 
 class CommandArgs {
@@ -241,13 +241,20 @@ export let MacroCommand = (function (){
 			const wordRange = document.getWordRangeAtPosition(lastSelection.active);
 
 			if (doEdit) {
-				const delta = offset - lastOffset;
-				if (delta != 0 && list.length > 0) {
-					const last = list[list.length - 1];
-					last.setOffset(delta);
+				if (active.line === lastSelection.active.line) {
+					// Same-line post-edit cursor adjustment: absorb it and record the offset delta.
+					const delta = offset - lastOffset;
+					if (delta != 0 && list.length > 0) {
+						const last = list[list.length - 1];
+						last.setOffset(delta);
+					}
+					doEdit = false;
+					return;
 				}
+				// Cursor moved to a different line — this is a new user action, not a
+				// post-edit adjustment (e.g. CursorDown after a forward Delete that left
+				// no selection-change event). Clear the flag and fall through to record it.
 				doEdit = false;
-				return;
 			}
 
 			let cmd: MacroStore | null = null;
@@ -345,6 +352,14 @@ export let MacroCommand = (function (){
 		push: (func: InternalFunctionVoid) => {
 			if (recording) {
 				pushCommand(func, CommandActivator.isAsync(func.name));
+			}
+		},
+		// Set cmdTime without adding an entry, to suppress event-based recording
+		// (pushEdit/pushMove) during the 100ms window after an internal command
+		// fires editor.edit() — events fire synchronously before push() is called.
+		lock: () => {
+			if (recording) {
+				cmdTime = Date.now();
 			}
 		},
 	};
