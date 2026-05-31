@@ -17,7 +17,6 @@ export let FileCommand = (function() {
 		const qp = vscode.window.createQuickPick<FileQuickPickItem>();
 		qp.placeholder = 'Type file name to open';
 		qp.matchOnDescription = true;
-		qp.busy = true;
 		qp.show();
 
 		const uris = await vscode.workspace.findFiles(
@@ -25,7 +24,7 @@ export let FileCommand = (function() {
 			'{**/node_modules/**,**/.git/**,**/.hg/**,**/out/**}'
 		);
 
-		const items: FileQuickPickItem[] = uris.map(uri => {
+		const allItems: FileQuickPickItem[] = uris.map(uri => {
 			const rel = vscode.workspace.asRelativePath(uri, false);
 			return {
 				label: path.basename(uri.fsPath),
@@ -33,10 +32,13 @@ export let FileCommand = (function() {
 				uri
 			};
 		});
-		items.sort((a, b) => a.label.localeCompare(b.label));
+		allItems.sort((a, b) => a.label.localeCompare(b.label));
 
-		qp.items = items;
-		qp.busy = false;
+		qp.onDidChangeValue(() => {
+			if (qp.items.length === 0) {
+				qp.items = allItems;
+			}
+		});
 
 		qp.onDidAccept(async () => {
 			const selected = qp.selectedItems[0];
