@@ -138,6 +138,11 @@
 				"command": "extension.openFile",
 				"title": "Open file",
 				"category": "file"
+			},
+			{
+				"command": "extension.searchWord",
+				"title": "Search word",
+				"category": "search"
 			}
 		],
 		"keybindings": [
@@ -195,6 +200,11 @@
 			{
 				"key": "escape f",
 				"command": "extension.openFile",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"key": "escape s",
+				"command": "extension.searchWord",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
 		]
