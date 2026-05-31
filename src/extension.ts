@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import {EditCommand} from './edit';
 import {MoveCommand} from './move';
 import {MacroCommand} from './macro';
+import {FileCommand} from './file';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -12,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 	EditCommand.activate(context);
 	MoveCommand.activate(context);
 	MacroCommand.activate(context);
+	FileCommand.activate(context);
 }
 
 // this method is called when your extension is deactivated

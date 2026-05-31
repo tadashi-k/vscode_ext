@@ -33,7 +33,8 @@
 		"onCommand:extension.swapMark",
 		"onCommand:extension.gotoMark",
 		"onCommand:extension.macroRecord",
-		"onCommand:extension.macroReplay"
+		"onCommand:extension.macroReplay",
+		"onCommand:extension.openFile"
 	],
 	"main": "./out/extension",
 	"contributes": {
@@ -132,6 +133,11 @@
 				"command": "extension.macroReplay",
 				"title": "Marco replay",
 				"category": "macro"
+			},
+			{
+				"command": "extension.openFile",
+				"title": "Open file",
+				"category": "file"
 			}
 		],
 		"keybindings": [
@@ -184,6 +190,11 @@
 			{
 				"key": "escape [",
 				"command": "extension.macroRecord",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"key": "escape f",
+				"command": "extension.openFile",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
 		]
