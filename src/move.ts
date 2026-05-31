@@ -228,18 +228,6 @@ export let MoveCommand = (function(){
 		});
 	});
 
-	vscode.workspace.onDidCloseTextDocument((event) => {
-		//console.log('close', event.fileName);
-		let idx = 0;
-		while (idx < markList.length) {
-			if (markList[idx].document.fileName == event.fileName) {
-				markList.splice(idx, 1);
-			} else {
-				idx++;
-			}
-		}
-	});
-
 	function gotoMark(editor: vscode.TextEditor) {
 		if (markList.length == 0) {
 			return;
