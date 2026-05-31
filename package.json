@@ -224,6 +224,9 @@
 		"project": "tsconfig.test.json",
 		"transpileOnly": true
 	},
+	"overrides": {
+		"serialize-javascript": "^7.0.5"
+	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
 		"@types/mocha": "^10.0.10",
