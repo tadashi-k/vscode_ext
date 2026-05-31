@@ -3,7 +3,10 @@
 out/test/**
 out/**/*.map
 src/**
+test/**
 .gitignore
+.mocharc.json
 tsconfig.json
+tsconfig.test.json
 vsc-extension-quickstart.md
 tslint.json
