@@ -242,7 +242,7 @@ export let MacroCommand = (function (){
 
 			if (doEdit) {
 				const delta = offset - lastOffset;
-				if (delta != 0) {
+				if (delta != 0 && list.length > 0) {
 					const last = list[list.length - 1];
 					last.setOffset(delta);
 				}
