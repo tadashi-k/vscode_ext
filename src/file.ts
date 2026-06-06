@@ -5,12 +5,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 type FileQuickPickItem = vscode.QuickPickItem & { uri: vscode.Uri };
+type PatternInfo = { pattern: string; isRegexp: boolean };
 
 export let FileCommand = (function() {
 
-	function readIgnorePatterns(workspaceFolder: string, ignoreFilename: string): string[] {
+	function readIgnorePatterns(workspaceFolder: string, ignoreFilename: string): PatternInfo[] {
 		const ignoreFilePath = path.join(workspaceFolder, ignoreFilename);
-		const patterns: string[] = [];
+		const patterns: PatternInfo[] = [];
 		
 		if (!fs.existsSync(ignoreFilePath)) {
 			return patterns;
@@ -32,11 +33,10 @@ export let FileCommand = (function() {
 					continue;
 				}
 				
-				if (ignoreFilename === '.hgignore' && isRegexpMode) {
-					patterns.push(trimmed);
-				} else {
-					patterns.push(trimmed);
-				}
+				patterns.push({
+					pattern: trimmed,
+					isRegexp: ignoreFilename === '.hgignore' && isRegexpMode
+				});
 			}
 		} catch (err) {
 			console.error(`Failed to read ${ignoreFilename}:`, err);
@@ -45,15 +45,56 @@ export let FileCommand = (function() {
 		return patterns;
 	}
 
-	function patternsToGlobExclude(patterns: string[]): string {
+	function regexpToGlob(regexp: string): string | null {
+		// Remove anchors
+		let pattern = regexp.replace(/^\^/, '').replace(/\$$/, '');
+		
+		// Handle common patterns
+		if (pattern === '.*') {
+			return '**/*';
+		}
+		
+		// Convert .* to * and .+ to *
+		pattern = pattern.replace(/\.\*/g, '*').replace(/\.\+/g, '+');
+		
+		// Handle escaped characters
+		pattern = pattern.replace(/\\\./g, '.');
+		pattern = pattern.replace(/\\\*/g, '*');
+		pattern = pattern.replace(/\\\?/g, '?');
+		
+		// Handle character classes [abc], [^abc]
+		pattern = pattern.replace(/\[([^\]]+)\]/g, '[$1]');
+		
+		// Handle groups (|) - convert to glob alternation
+		if (pattern.includes('|')) {
+			const parts = pattern.split('|').map(p => p.trim());
+			return parts.length > 0 ? parts[0] : null;
+		}
+		
+		return pattern || null;
+	}
+
+	function patternsToGlobExclude(patternInfos: PatternInfo[]): string {
 		const globs: string[] = [];
 		
-		for (const pattern of patterns) {
+		for (const { pattern, isRegexp } of patternInfos) {
 			if (!pattern) {
 				continue;
 			}
 			
 			let glob = pattern;
+			
+			// If it's a regexp pattern, try to convert it to glob
+			if (isRegexp) {
+				const converted = regexpToGlob(pattern);
+				if (converted) {
+					glob = converted;
+				} else {
+					// If conversion fails, skip this pattern
+					continue;
+				}
+			}
+			
 			if (glob.endsWith('/')) {
 				glob = `**/${glob}**`;
 			} else if (!glob.includes('/')) {
@@ -89,11 +130,11 @@ export let FileCommand = (function() {
 
 		const workspaceFolderPath = workspaceFolders[0].uri.fsPath;
 		
-		const gitignorePatterns = readIgnorePatterns(workspaceFolderPath, '.gitignore');
-		const hgignorePatterns = readIgnorePatterns(workspaceFolderPath, '.hgignore');
-		const allPatterns = [...gitignorePatterns, ...hgignorePatterns];
+		const gitignorePatternInfos = readIgnorePatterns(workspaceFolderPath, '.gitignore');
+		const hgignorePatternInfos = readIgnorePatterns(workspaceFolderPath, '.hgignore');
+		const allPatternInfos = [...gitignorePatternInfos, ...hgignorePatternInfos];
 		
-		const gitignoreExclude = patternsToGlobExclude(allPatterns);
+		const gitignoreExclude = patternsToGlobExclude(allPatternInfos);
 		const excludePattern = gitignoreExclude 
 			? `{**/node_modules/**,**/.git/**,**/.hg/**,**/out/**,${gitignoreExclude.slice(1, -1)}}`
 			: '{**/node_modules/**,**/.git/**,**/.hg/**,**/out/**}';
@@ -136,6 +177,10 @@ export let FileCommand = (function() {
 			context.subscriptions.push(
 				vscode.commands.registerCommand('extension.openFile', openFile)
 			);
-		}
+		},
+		// Export for testing
+		readIgnorePatterns,
+		regexpToGlob,
+		patternsToGlobExclude
 	};
 })();
