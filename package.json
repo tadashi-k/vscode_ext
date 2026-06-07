@@ -203,7 +203,7 @@
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			},
 			{
-				"key": "escape s",
+				"key": "escape a",
 				"command": "extension.searchWord",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
@@ -235,7 +235,7 @@
 		"@typescript-eslint/eslint-plugin": "^5.62.0",
 		"@typescript-eslint/parser": "^5.62.0",
 		"@vscode/test-electron": "^2.5.2",
-		"@vscode/vsce": "^3.9.1",
+		"@vscode/vsce": "^3.9.2",
 		"eslint": "^8.1.0",
 		"glob": "^7.1.7",
 		"mocha": "^11.3.0",
