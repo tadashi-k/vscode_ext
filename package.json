@@ -32,6 +32,10 @@
 		"onCommand:extension.mark",
 		"onCommand:extension.swapMark",
 		"onCommand:extension.gotoMark",
+		"onCommand:extension.gotoMarkAtIndex1",
+		"onCommand:extension.gotoMarkAtIndex2",
+		"onCommand:extension.gotoMarkAtIndex3",
+		"onCommand:extension.gotoMarkAtIndex4",
 		"onCommand:extension.macroRecord",
 		"onCommand:extension.macroReplay",
 		"onCommand:extension.openFile"
@@ -125,6 +129,26 @@
 				"category": "move"
 			},
 			{
+				"command": "extension.gotoMarkAtIndex1",
+				"title": "Go to mark 1",
+				"category": "move"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex2",
+				"title": "Go to mark 2",
+				"category": "move"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex3",
+				"title": "Go to mark 3",
+				"category": "move"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex4",
+				"title": "Go to mark 4",
+				"category": "move"
+			},
+			{
 				"command": "extension.macroRecord",
 				"title": "Start and stop macro recoding",
 				"category": "macro"
@@ -182,6 +206,26 @@
 			{
 				"key": "escape p",
 				"command": "extension.gotoMark",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex1",
+				"key": "alt+1",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex2",
+				"key": "alt+2",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex3",
+				"key": "alt+3",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"command": "extension.gotoMarkAtIndex4",
+				"key": "alt+4",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			},
 			{

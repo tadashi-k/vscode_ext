@@ -257,9 +257,31 @@ export let MoveCommand = (function(){
 		);
 	}
 
+	function gotoMarkAtIndex(editor: vscode.TextEditor, index: number) {
+		if (0 <= index && index < markList.length) {
+			openDocumentByMark(editor, markList[index]);
+		}
+	}
+
+	function gotoMarkAtIndex1(editor: vscode.TextEditor) {
+		gotoMarkAtIndex(editor, 0);
+	}
+
+	function gotoMarkAtIndex2(editor: vscode.TextEditor) {
+		gotoMarkAtIndex(editor, 1);
+	}
+
+	function gotoMarkAtIndex3(editor: vscode.TextEditor) {
+		gotoMarkAtIndex(editor, 2);
+	}
+
+	function gotoMarkAtIndex4(editor: vscode.TextEditor) {
+		gotoMarkAtIndex(editor, 3);
+	}
+
 	return {
 		activate: (context: vscode.ExtensionContext) => {
-			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark, gotoMark]);
+			CommandActivator.register(context, [nextWord, prevWord, mark, swapMark, gotoMark, gotoMarkAtIndex1, gotoMarkAtIndex2, gotoMarkAtIndex3, gotoMarkAtIndex4]);
 			CommandActivator.registerAsync(context, [nextLine, nextLineSelect, prevLine, prevLineSelect]);
 		},
 		nextWord : (editor: vscode.TextEditor) => {
