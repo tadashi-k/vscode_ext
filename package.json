@@ -2,7 +2,7 @@
 	"name": "editext",
 	"displayName": "Edit Extension",
 	"description": "Advanced text editing commands inspired by Emacs keybindings",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"publisher": "tadashi",
 	"repository": {
 		"type": "git",
