@@ -31,7 +31,7 @@ export let SuggestCommand = (function() {
 		const contextLines: string[] = [];
 		for (let i = startLine; i <= endLine; i++) {
 			if (i === currentLine) {
-				contextLines.push(`${beforeCursor}<CURSOR>${afterCursor}`);
+				contextLines.push(beforeCursor);
 			} else {
 				contextLines.push(document.lineAt(i).text);
 			}
@@ -47,15 +47,11 @@ export let SuggestCommand = (function() {
 
 		const userPrompt = `Complete the ${language} code at the cursor position.\n\n`
 			+ 'Rules:\n'
-			+ '- The code below contains a <CURSOR> marker showing where the developer is typing.\n'
-			+ '- Output ONLY the text that should be inserted at <CURSOR> to complete that line.\n'
-			+ '- Do NOT repeat any text that appears before <CURSOR>; continue directly from where it ends.\n'
-//			+ '- Do NOT include or continue the text after <CURSOR>; it stays as-is.\n'
-//			+ '- Output at most one line of code. No explanation, no markdown fences, no comments about the suggestion.\n'
-//			+ '- If nothing sensible can be added, output an empty string.\n'
+			+ '- The code below shows where the developer is typing.\n'
+			+ '- Output ONLY the text that should be inserted to complete last line of the code.\n'
+			+ '- Do NOT repeat any text that appears the line; continue directly from where it ends.\n'
 			+ `\nFile: ${fileName}\nLanguage: ${language}\n\n`
-			+ `\`\`\`${language}\n${context}\n\`\`\`\n\n`
-			+ 'Text to insert at <CURSOR>:`';
+			+ `\`\`\`${language}\n${context}\n\`\`\`\n`;
 
 		const apiBase = baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
 		const chatUrl = `${apiBase}/v1/chat/completions`;
@@ -66,11 +62,11 @@ export let SuggestCommand = (function() {
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: userPrompt }
 			],
-			max_tokens: 1000,
-			temperature: 0.0
+			max_tokens: 100,
+			temperature: 0.0,
+			enable_thinking: false,
+			reasoning_effort: 'low'
 		};
-
-		requestBody.reasoning_effort = 'low'
 
 		let response: any;
 		let lastError: any;
