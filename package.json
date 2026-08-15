@@ -38,10 +38,36 @@
 		"onCommand:extension.gotoMarkAtIndex4",
 		"onCommand:extension.macroRecord",
 		"onCommand:extension.macroReplay",
-		"onCommand:extension.openFile"
+		"onCommand:extension.openFile",
+		"onCommand:extension.suggest"
 	],
 	"main": "./out/extension",
 	"contributes": {
+		"configuration": {
+			"title": "Edit Extension",
+			"properties": {
+				"editext.llm.baseUrl": {
+					"type": "string",
+					"default": "http://localhost:1234/v1",
+					"description": "Base URL for the LLM API (OpenAI-compatible endpoint)"
+				},
+				"editext.llm.apiKey": {
+					"type": "string",
+					"default": "",
+					"description": "API key for the LLM service (optional for local LLMs)"
+				},
+				"editext.llm.model": {
+					"type": "string",
+					"default": "qwen2.5-coder-1.5b-instruct",
+					"description": "Model name to use for LLM requests"
+				},
+				"editext.llm.maxRetries": {
+					"type": "number",
+					"default": 3,
+					"description": "Maximum retries when the LLM returns no usable content"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "extension.deleteLine",
@@ -167,6 +193,11 @@
 				"command": "extension.searchWord",
 				"title": "Search word",
 				"category": "search"
+			},
+			{
+				"command": "extension.suggest",
+				"title": "Suggest",
+				"category": "edit"
 			}
 		],
 		"keybindings": [
@@ -249,6 +280,11 @@
 			{
 				"key": "escape a",
 				"command": "extension.searchWord",
+				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
+			},
+			{
+				"key": "ctrl+m",
+				"command": "extension.suggest",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
 		]
