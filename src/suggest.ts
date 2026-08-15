@@ -7,7 +7,7 @@ import { URL } from 'url';
 import { CommandActivator } from './command';
 
 const CONTEXT_LINES_BEFORE = 20;
-const CONTEXT_LINES_AFTER = 5;
+const CONTEXT_LINES_AFTER = 0;
 
 export let SuggestCommand = (function() {
 
@@ -15,7 +15,7 @@ export let SuggestCommand = (function() {
 		const config = vscode.workspace.getConfiguration('editext.llm');
 		const baseUrl = config.get<string>('baseUrl') || 'http://localhost:1234/v1';
 		const apiKey = config.get<string>('apiKey') || ''
-		const model = config.get<string>('model') || 'qwen2.5-coder-1.5b-instruct';
+		const model = config.get<string>('model') || 'qwen2.5-coder-3b-instruct';
 		const maxRetries = config.get<number>('maxRetries') || 3;
 
 		const document = editor.document;
@@ -39,13 +39,23 @@ export let SuggestCommand = (function() {
 		const context = contextLines.join('\n');
 
 		const language = document.languageId;
-		const prompt = `You are a code completion assistant.
-Given the following ${language} code with a <CURSOR> marker, suggest the code that should appear on the current line.
-Output ONLY the suggested code for the current line, with no explanation, no markdown fences, and no multiple lines.
+		const fileName = document.fileName.split(/[\\/]/).pop() || 'untitled';
 
-${context}
+		const systemPrompt = 'You are an inline code completion engine, like the autocomplete feature of an IDE. '
+			+ 'You predict the exact text the developer is most likely to type at the cursor. '
+			+ 'You output raw code only: no explanations, no markdown, no code fences.';
 
-Suggested code for the current line:`;
+		const userPrompt = `Complete the ${language} code at the cursor position.\n\n`
+			+ 'Rules:\n'
+			+ '- The code below contains a <CURSOR> marker showing where the developer is typing.\n'
+			+ '- Output ONLY the text that should be inserted at <CURSOR> to complete that line.\n'
+			+ '- Do NOT repeat any text that appears before <CURSOR>; continue directly from where it ends.\n'
+//			+ '- Do NOT include or continue the text after <CURSOR>; it stays as-is.\n'
+//			+ '- Output at most one line of code. No explanation, no markdown fences, no comments about the suggestion.\n'
+//			+ '- If nothing sensible can be added, output an empty string.\n'
+			+ `\nFile: ${fileName}\nLanguage: ${language}\n\n`
+			+ `\`\`\`${language}\n${context}\n\`\`\`\n\n`
+			+ 'Text to insert at <CURSOR>:`';
 
 		const apiBase = baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
 		const chatUrl = `${apiBase}/v1/chat/completions`;
@@ -53,11 +63,11 @@ Suggested code for the current line:`;
 		const requestBody: any = {
 			model: model,
 			messages: [
-				{ role: 'system', content: 'You are a helpful coding assistant.' },
-				{ role: 'user', content: prompt }
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: userPrompt }
 			],
-			max_tokens: 100,
-			temperature: 0.2
+			max_tokens: 1000,
+			temperature: 0.0
 		};
 
 		requestBody.reasoning_effort = 'low'

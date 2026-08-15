@@ -222,6 +222,10 @@
 				"key": "ctrl+n"
 			},
 			{
+				"key": "ctrl+m",
+				"command": "extension.suggest"
+			},
+			{
 				"command": "extension.nextWord",
 				"key": "ctrl+f"
 			},
@@ -280,11 +284,6 @@
 			{
 				"key": "escape a",
 				"command": "extension.searchWord",
-				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
-			},
-			{
-				"key": "ctrl+m",
-				"command": "extension.suggest",
 				"when": "textInputFocus && !suggestWidgetVisible && !findWidgetVisible"
 			}
 		]
