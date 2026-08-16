@@ -6,8 +6,10 @@ import * as http from 'http';
 import { URL } from 'url';
 import { CommandActivator } from './command';
 
-const CONTEXT_LINES_BEFORE = 20;
-const CONTEXT_LINES_AFTER = 0;
+const CONTEXT_LINES_BEFORE = 30;
+const CONTEXT_LINES_AFTER = 10;
+
+const CURSOR_MARKER = '<CURSOR>';
 
 export let SuggestCommand = (function() {
 
@@ -16,7 +18,9 @@ export let SuggestCommand = (function() {
 		const baseUrl = config.get<string>('baseUrl') || 'http://localhost:1234/v1';
 		const apiKey = config.get<string>('apiKey') || ''
 		const model = config.get<string>('model') || 'qwen2.5-coder-3b-instruct';
-		const maxRetries = config.get<number>('maxRetries') || 3;
+		const maxRetries = config.get<number>('maxRetries') ?? 3;
+		const maxTokens = config.get<number>('maxTokens') ?? 150;
+		const temperature = config.get<number>('temperature') ?? 0.1;
 
 		const document = editor.document;
 		const position = editor.selection.active;
@@ -31,7 +35,7 @@ export let SuggestCommand = (function() {
 		const contextLines: string[] = [];
 		for (let i = startLine; i <= endLine; i++) {
 			if (i === currentLine) {
-				contextLines.push(beforeCursor);
+				contextLines.push(beforeCursor + CURSOR_MARKER + afterCursor);
 			} else {
 				contextLines.push(document.lineAt(i).text);
 			}
@@ -41,17 +45,32 @@ export let SuggestCommand = (function() {
 		const language = document.languageId;
 		const fileName = document.fileName.split(/[\\/]/).pop() || 'untitled';
 
-		const systemPrompt = 'You are an inline code completion engine, like the autocomplete feature of an IDE. '
-			+ 'You predict the exact text the developer is most likely to type at the cursor. '
-			+ 'You output raw code only: no explanations, no markdown, no code fences.';
-
-		const userPrompt = `Complete the ${language} code at the cursor position.\n\n`
+		const systemPrompt =
+			'You are an expert inline code completion engine. '
+			+ 'Given a snippet of code with a `<CURSOR>` marker, predict the exact text the developer is most likely to type next. '
 			+ 'Rules:\n'
-			+ '- The code below shows where the developer is typing.\n'
-			+ '- Output ONLY the text that should be inserted to complete last line of the code.\n'
-			+ '- Do NOT repeat any text that appears the line; continue directly from where it ends.\n'
-			+ `\nFile: ${fileName}\nLanguage: ${language}\n\n`
-			+ `\`\`\`${language}\n${context}\n\`\`\`\n`;
+			+ '- Output ONLY the raw text that should be inserted at `<CURSOR>`.\n'
+			+ '- Do NOT output the `<CURSOR>` marker itself.\n'
+			+ '- Do NOT output explanations, markdown, or code fences.\n'
+			+ '- Stop after finishing the current statement or block; do not continue into new unrelated code.\n'
+			+ '- Match the surrounding indentation and style exactly.\n'
+			+ '- If the cursor is in the middle of a word, continue that word naturally.';
+
+		const userPrompt =
+			`File: ${fileName}\nLanguage: ${language}\n\n`
+			+ 'Complete the following code at the `<CURSOR>` position.\n\n'
+			+ 'Example:\n'
+			+ '```python\n'
+			+ 'def greet(name):\n'
+			+ '    return "Hello, " + <CURSOR> + "!"\n'
+			+ '```\n'
+			+ 'Output:\n'
+			+ 'name\n\n'
+			+ 'Now complete this code:\n'
+			+ '```' + language + '\n'
+			+ context + '\n'
+			+ '```\n'
+			+ 'Output:';
 
 		const apiBase = baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
 		const chatUrl = `${apiBase}/v1/chat/completions`;
@@ -62,10 +81,11 @@ export let SuggestCommand = (function() {
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: userPrompt }
 			],
-			max_tokens: 100,
-			temperature: 0.0,
+			max_tokens: maxTokens,
+			temperature: temperature,
 			enable_thinking: false,
 			reasoning_effort: 'low'
+//			stop: ['\n\n', '<CURSOR>', '```']
 		};
 
 		let response: any;
@@ -162,11 +182,8 @@ export let SuggestCommand = (function() {
 		if (!response.choices || response.choices.length === 0) {
 			return false;
 		}
-		const message = response.choices[0].message;
-		if (!message) {
-			return false;
-		}
-		const content = message.content || response.choices[0].text || '';
+		const choice = response.choices[0];
+		const content = choice.message?.content || choice.text || '';
 		return content.trim().length > 0;
 	}
 
@@ -178,37 +195,31 @@ export let SuggestCommand = (function() {
 	}
 
 	function cleanSuggestion(content: string, beforeCursor: string, afterCursor: string): string {
-		let cleaned = content.trim();
+		let cleaned = content;
 
-		// Remove markdown code fences
-		if (cleaned.startsWith('```')) {
-			const lines = cleaned.split('\n');
-			if (lines.length > 1) {
-				lines.shift();
-				if (lines[lines.length - 1].trim() === '```') {
-					lines.pop();
-				}
-				cleaned = lines.join('\n').trim();
-			} else {
-				cleaned = cleaned.replace(/```/g, '').trim();
-			}
+		// Remove markdown fences and the language tag that may follow them
+		cleaned = cleaned.replace(/```[a-zA-Z0-9_+-]*\n?/g, '').replace(/```/g, '');
+
+		// Remove the cursor marker if the model echoed it
+		cleaned = cleaned.replace(new RegExp(CURSOR_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+
+		// Trim leading blank lines / common prefix label
+		cleaned = cleaned.replace(/^(Output:\s*)?/i, '').trimStart();
+
+		// If the model repeats the prefix already present before the cursor, drop it
+		const trimmedPrefix = beforeCursor.trim();
+		if (trimmedPrefix && cleaned.startsWith(trimmedPrefix)) {
+			cleaned = cleaned.substring(trimmedPrefix.length);
 		}
 
-		// Ensure single line
-		cleaned = cleaned.split('\n')[0].trim();
-
-		// Remove cursor marker if present
-		cleaned = cleaned.replace(/<CURSOR>/g, '').trim();
-
-		// Remove duplicated prefix already present before cursor
-		if (beforeCursor && cleaned.startsWith(beforeCursor)) {
-			cleaned = cleaned.substring(beforeCursor.length).trimStart();
+		// If the model repeats the suffix already present after the cursor, drop it
+		const trimmedSuffix = afterCursor.trim();
+		if (trimmedSuffix && cleaned.endsWith(trimmedSuffix)) {
+			cleaned = cleaned.substring(0, cleaned.length - trimmedSuffix.length);
 		}
 
-		// Remove duplicated suffix already present after cursor
-		if (afterCursor && cleaned.endsWith(afterCursor.trim())) {
-			cleaned = cleaned.substring(0, cleaned.length - afterCursor.trim().length).trimEnd();
-		}
+		// Remove a single trailing blank line, but keep intentional internal ones
+		cleaned = cleaned.replace(/\n\s*$/, '\n').trimEnd();
 
 		return cleaned;
 	}
