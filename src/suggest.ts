@@ -21,6 +21,7 @@ export let SuggestCommand = (function() {
 		const maxRetries = config.get<number>('maxRetries') ?? 3;
 		const maxTokens = config.get<number>('maxTokens') ?? 150;
 		const temperature = config.get<number>('temperature') ?? 0.1;
+		const timeoutMs = config.get<number>('timeout') ?? 30000;
 
 		const document = editor.document;
 		const position = editor.selection.active;
@@ -93,7 +94,7 @@ export let SuggestCommand = (function() {
 		let attempt = 0;
 		while (attempt <= maxRetries) {
 			try {
-				response = await makePostRequest(chatUrl, requestBody, apiKey);
+				response = await makePostRequest(chatUrl, requestBody, apiKey, timeoutMs);
 				if (hasUsableContent(response)) {
 					break;
 				}
@@ -131,7 +132,7 @@ export let SuggestCommand = (function() {
 		});
 	}
 
-	function makePostRequest(url: string, body: object, apiKey: string): Promise<any> {
+	function makePostRequest(url: string, body: object, apiKey: string, timeoutMs: number): Promise<any> {
 		return new Promise((resolve, reject) => {
 			const parsedUrl = new URL(url);
 			const postData = JSON.stringify(body);
@@ -155,21 +156,32 @@ export let SuggestCommand = (function() {
 			}
 
 			const client = parsedUrl.protocol === 'https:' ? https : http;
+			let timer: NodeJS.Timeout | undefined;
 			const req = client.request(options, (res: any) => {
 				let data = '';
 				res.on('data', (chunk: any) => {
 					data += chunk;
 				});
 				res.on('end', () => {
+					if (timer) { clearTimeout(timer); }
 					try {
 						resolve(JSON.parse(data));
 					} catch (err) {
 						reject(new Error('Failed to parse LLM response: ' + data));
 					}
 				});
+				res.on('error', (err: any) => {
+					if (timer) { clearTimeout(timer); }
+					reject(err);
+				});
 			});
 
+			timer = setTimeout(() => {
+				req.destroy(new Error(`LLM request timed out after ${timeoutMs} ms`));
+			}, timeoutMs);
+
 			req.on('error', (err: any) => {
+				if (timer) { clearTimeout(timer); }
 				reject(err);
 			});
 
