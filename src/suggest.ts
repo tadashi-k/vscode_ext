@@ -16,7 +16,7 @@ export let SuggestCommand = (function() {
 	async function suggest(editor: vscode.TextEditor): Promise<void> {
 		const config = vscode.workspace.getConfiguration('editext.llm');
 		const baseUrl = config.get<string>('baseUrl') || 'http://localhost:1234/v1';
-		const apiKey = config.get<string>('apiKey') || ''
+		const apiKey = config.get<string>('apiKey') || '';
 		const model = config.get<string>('model') || '';
 		const maxRetries = config.get<number>('maxRetries') ?? 3;
 		const maxTokens = config.get<number>('maxTokens') ?? 150;
@@ -148,7 +148,7 @@ export let SuggestCommand = (function() {
 				}
 			};
 
-			if (apiKey != '') {
+			if (apiKey !== '') {
 				options.headers = {
 					...options.headers,
 					'Authorization': `Bearer ${apiKey}`
